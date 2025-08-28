@@ -1,6 +1,7 @@
 $(document).ready(function () {
     $('.text').textillate({
-        loop: true,
+        // loop: true,
+        loop: false,
         in: {
             effect: 'fadeIn',
             sync: false 
@@ -24,7 +25,8 @@ $(document).ready(function () {
 
     // Siri message animation
     $('.siri-message').textillate({
-        loop: true,
+        // loop: true,
+        loop: false,
         in: {
             effect: 'fadeIn',
             sync: false 
@@ -35,5 +37,11 @@ $(document).ready(function () {
         }
     });
 
-    
+    // Mic Button Click Event
+    $('#MicBtn').click(function () {
+        eel.playAssistantSound();
+        $("#oval").attr("hidden", true);
+        $("#SiriWave").attr("hidden", false);
+        eel.allCommands()();
+    });
 });

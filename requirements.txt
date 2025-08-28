@@ -1,2 +1,6 @@
 eel
 playsound==1.2.2
+pyttsx3
+SpeechRecognition
+pyaudio
+pywhatkit
