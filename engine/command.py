@@ -46,25 +46,70 @@ def takeCommand():
 
 @eel.expose
 def allCommands():
-    query = takeCommand()
-    print(query)
+    try:
+        query = takeCommand()
+        print(query)
 
-    if 'open' in query:
-        from engine.features import openCommand
-        openCommand(query)
-    elif 'on youtube' in query:
-        from engine.features import playYoutube, searchYoutube
-        command_type, _ = extract_yt_term(query)
+        if 'open' in query:
+            from engine.features import openCommand
+            openCommand(query)
+        elif 'on youtube' in query:
+            from engine.features import playYoutube, searchYoutube
+            command_type, _ = extract_yt_term(query)
         
-        if command_type == 'search':
-            searchYoutube(query)
+            if command_type == 'search':
+                searchYoutube(query)
+            else:
+                playYoutube(query)
+        
+        # elif any(kw in query for kw in ["send message", "phone call", "voice call", "video call", "call"]):
+        #     from engine.features import findContact, whatsApp
+        #     flag = ""
+        #     contact_no, name = findContact(query)
+        #     if contact_no != 0:
+        #         if "send message" in query:
+        #             flag = 'message'
+        #             speak("what message to send")
+        #             query = takeCommand()
+
+        #         elif "video call" in query:
+        #             flag = 'video call'
+
+        #         elif any(kw in query for kw in ["phone call", "voice call", "call"]):
+        #             flag = 'call'
+                    
+        #         whatsApp(contact_no, query, flag, name)
+
+        elif any(kw in query.lower() for kw in ["send message", "phone call", "voice call", "video call", "call"]):
+            from engine.features import findContact, whatsApp
+            flag = ""
+    
+            # Find contact from your contacts list
+            contact_no, name = findContact(query)
+    
+            if contact_no != 0:
+                # Determine intent (message or call)
+                if "send message" in query:
+                    flag = 'message'
+                    speak("What message should I send?")
+                    query = takeCommand()
+
+                elif "video call" in query:
+                    flag = 'video call'
+
+                elif any(kw in query for kw in ["phone call", "voice call", "call"]):
+                    flag = 'call'
+
+                # Call the WhatsApp automation function
+                whatsApp(contact_no, query, flag, name)
+            else:
+                speak("I couldn't find the contact.")
+
+
         else:
-            playYoutube(query)
-
-
-
-    else:
-        print("not run")
+            print("not run")
+    except:
+        print("error")
     
     eel.ShowHood()
 
@@ -129,4 +174,3 @@ def allCommands():
 #         speak("Sorry, I didn't understand that.")
 
 #     eel.ShowHood()
-

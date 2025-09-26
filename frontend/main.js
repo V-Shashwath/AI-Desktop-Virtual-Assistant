@@ -44,4 +44,15 @@ $(document).ready(function () {
         $("#SiriWave").attr("hidden", false);
         eel.allCommands()();
     });
+
+    //shortcut key
+    function doc_keyUp(e) {
+        if (e.key === 'j' && e.metaKey) {
+            eel.playAssistantSound()
+            $("#oval").attr("hidden", true);
+            $("#SiriWave").attr("hidden", false);
+            eel.allCommands()()
+        }
+    }
+    document.addEventListener('keyup', doc_keyUp, false);
 });
