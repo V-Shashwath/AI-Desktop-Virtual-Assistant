@@ -13,6 +13,7 @@ def speak(text):
     engine.setProperty('rate', 150)
     eel.DisplayMessage(text)
     engine.say(text)
+    eel.receiverText(text)
     engine.runAndWait()
 
 
@@ -24,7 +25,7 @@ def takeCommand():
         r.pause_threshold = 1
         r.adjust_for_ambient_noise(source)
 
-        audio = r.listen(source, 10, 6 )
+        audio = r.listen(source, 12, 8 )
     
     try:
         print("Recognizing...")
@@ -45,10 +46,17 @@ def takeCommand():
 # speak(text)
 
 @eel.expose
-def allCommands():
-    try:
+def allCommands(message=1):
+
+    if message == 1:
         query = takeCommand()
         print(query)
+        eel.senderText(query)
+    else:
+        query = message
+        eel.senderText(query)
+    
+    try:
 
         if 'open' in query:
             from engine.features import openCommand
