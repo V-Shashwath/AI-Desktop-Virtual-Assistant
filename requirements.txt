@@ -7,3 +7,8 @@ pywhatkit
 pvporcupine==1.9.5
 pygetwindow
 pyautogui
+google-generativeai
+markdown2
+beautifulsoup4
+opencv-python
+opencv-contrib-python

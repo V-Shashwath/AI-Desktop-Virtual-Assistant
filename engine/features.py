@@ -1,3 +1,4 @@
+import json
 from pipes import quote
 import subprocess
 import webbrowser
@@ -5,7 +6,7 @@ from playsound import playsound
 import eel
 import pyautogui
 from engine.command import speak
-from engine.config import ASSISTANT_NAME 
+from engine.config import ASSISTANT_NAME, LLM_KEY
 import os
 import sqlite3
 import pywhatkit as kit
@@ -13,7 +14,7 @@ import pvporcupine
 import pyaudio
 import struct
 import time
-from engine.helper import extract_yt_term, remove_words
+from engine.helper import extract_yt_term, markdown_to_text, remove_words
 
 connection = sqlite3.connect("adva.db")
 cursor = connection.cursor()
@@ -172,7 +173,7 @@ def searchYoutube(query):
 
 # Find contact in database and return number
 def findContact(query):
-    words_to_remove = [ASSISTANT_NAME, 'make', 'a', 'to', 'phone', 'call', 'send', 'message', 'whatsapp', 'video','for','can','you','could','please','me','voice','with']
+    words_to_remove = [ASSISTANT_NAME, 'make', 'a', 'to', 'phone', 'call', 'send', 'message', 'whatsapp', 'video','for','can','you','could','please','me','voice','with','sms']
     query = remove_words(query, words_to_remove)
 
     try:
@@ -279,3 +280,290 @@ def whatsApp(mobile_no, message, flag, name):
 
     # Confirmation
     speak(assistant_message)
+
+
+# import google.generativeai as genai
+
+# def geminai(query):
+#     try:
+#         query = query.replace(ASSISTANT_NAME, "")
+#         query = query.replace("search", "")
+#         # Set your API key
+#         genai.configure(api_key=LLM_KEY)
+
+#         # Select a model
+#         model = genai.GenerativeModel("gemini-2.0-flash")
+
+#         # Generate a response
+#         response = model.generate_content(query)
+#         filter_text = markdown_to_text(response.text)
+#         speak(filter_text)
+#     except Exception as e:
+#         print("Error:", e)
+
+
+import google.generativeai as genai
+import os
+from engine.command import speak, takeCommand
+from engine.helper import markdown_to_text
+
+# Optional: suppress Gemini gRPC warnings
+os.environ["GRPC_VERBOSITY"] = "NONE"
+os.environ["GRPC_CPP_MIN_LOG_LEVEL"] = "3"
+
+# Maintain short-term conversational context
+conversation_context = []  
+
+# Load your Gemini API key and assistant name (ensure they're defined in config.py)
+from engine.config import LLM_KEY, ASSISTANT_NAME
+
+
+def geminai(query):
+    """
+    Handles natural language interaction via Google Gemini model.
+    Context-aware, voice-integrated, and GUI-friendly.
+    """
+    global conversation_context
+    try:
+        # Clean query for clarity
+        query = query.replace(ASSISTANT_NAME, "").replace("search", "").strip()
+
+        # Configure Gemini API
+        genai.configure(api_key=LLM_KEY)
+
+        # Load Gemini model
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        # Build short-term conversation memory
+        context_summary = ""
+        if conversation_context:
+            context_summary = "\n".join(
+                [f"User: {c['user']}\nAssistant: {c['assistant']}" for c in conversation_context[-3:]]
+            )
+
+        # Finest system prompt — context-aware, polite, and TTS-friendly
+        prompt = f"""
+You are {ASSISTANT_NAME}, a smart and polite AI module inside a Desktop Virtual Assistant system.
+You understand the user's natural language, use recent conversation context, 
+and can ask for clarification when necessary.
+
+### System Context:
+- You are part of a layered AI assistant with facial recognition, speech recognition,
+  NLP, command execution, API access, data storage, and GUI display.
+- You communicate through text and voice (TTS).
+- Keep responses short, natural, and easy to speak aloud (max 2–3 sentences).
+- Avoid markdown, HTML, or code formatting.
+
+### Behavior Rules:
+1. Be concise, friendly, and confident.
+2. Use previous context to understand follow-up questions.
+3. If the user's query is unclear or incomplete, politely ask for clarification.
+4. When asked to perform a task, acknowledge or confirm action.
+5. Do not repeat long intros or greetings multiple times in one session.
+
+### Example Interactions:
+User: "Open YouTube"
+You: "Opening YouTube now."
+
+User: "What is AI?"
+You: "Artificial Intelligence is how computers learn and make decisions like humans."
+
+User: "Check the weather"
+You: "Sure, can you please tell me your location?"
+
+### Previous Context:
+{context_summary if context_summary else "None"}
+
+### Current User Query:
+{query}
+"""
+
+        # Generate response from Gemini
+        response = model.generate_content(prompt)
+        ai_reply = response.text.strip()
+        filter_text = markdown_to_text(ai_reply)
+
+        # Speak and display output
+        speak(filter_text)
+        print(f"{ASSISTANT_NAME}:", filter_text)
+
+        # Store this exchange for context
+        conversation_context.append({
+            "user": query,
+            "assistant": filter_text
+        })
+        if len(conversation_context) > 5:
+            conversation_context.pop(0)
+
+        # --- Clarification logic ---
+        # If Gemini asks for clarification (contains "please" + "?"), listen for response
+        if "?" in filter_text and "please" in filter_text.lower():
+            speak("Can you please clarify that?")
+            user_response = takeCommand()
+
+            if user_response and user_response.strip() != "":
+                geminai(user_response)
+
+    except Exception as e:
+        print("Error in geminai():", e)
+        speak("Sorry, I encountered an error while processing your request.")
+
+
+# android automation
+
+def makeCall(name, mobileNo):
+    mobileNo = mobileNo.replace(" ", "")
+    speak("Calling "+name)
+    command = 'adb shell am start -a android.intent.action.CALL -d tel:'+mobileNo
+    os.system(command)
+
+
+import subprocess
+import time
+
+def sendMessage(message, mobileNo, name):
+    """Send SMS via Google Messages using ADB automation."""
+    speak(f"Sending message to {name} via Google Messages")
+
+    # --- Google Messages UI automation ---
+    subprocess.run([
+        "adb", "shell", "am", "start",
+        "-n", "com.google.android.apps.messaging/.ui.ConversationListActivity"
+    ])
+    time.sleep(2)
+
+    # Tap “Start chat” button
+    subprocess.run(["adb", "shell", "input", "tap", "800", "2200"])
+    time.sleep(1)
+
+    # Type contact number
+    subprocess.run(["adb", "shell", f"input text {mobileNo}"])
+    # subprocess.run(["adb", "shell", "input keyevent 66"])  # Enter
+    subprocess.run(["adb", "shell", "input tap 980 2250"])  # Enter
+    time.sleep(2)
+
+    # Type the message (spaces must be escaped for ADB input)
+    safe_message = message.replace(" ", "%s")
+    subprocess.run(["adb", "shell", f"input text {safe_message}"])
+    time.sleep(1)
+
+    # Send the message
+    # subprocess.run(["adb", "shell", "input keyevent 66"])  # Enter
+    time.sleep(1)
+    subprocess.run(["adb", "shell", "input tap 950 1500"])  # optional: tap SEND icon
+
+    speak(f"Message sent successfully to {name}")
+
+
+
+# Settings Modal 
+
+# Assistant name
+@eel.expose
+def assistantName():
+    name = ASSISTANT_NAME
+    return name
+
+
+@eel.expose
+def personalInfo():
+    try:
+        cursor.execute("SELECT * FROM personal_info")
+        results = cursor.fetchall()
+        jsonArr = json.dumps(results[0])
+        eel.getData(jsonArr)
+        return 1    
+    except:
+        print("no data")
+
+
+@eel.expose
+def updatePersonalInfo(name, mobile, email, city):
+    cursor.execute("SELECT COUNT(*) FROM personal_info")
+    count = cursor.fetchone()[0]
+
+    if count > 0:
+        # Update existing record
+        cursor.execute(
+            '''UPDATE personal_info 
+               SET name=?, mobile=?, email=?, city=?''',
+            (name, mobile, email, city)
+        )
+    else:
+        # Insert new record if no data exists
+        cursor.execute(
+            '''INSERT INTO personal_info (name, mobile, email, city) 
+               VALUES (?, ?, ?, ?)''',
+            (name, mobile, email, city)
+        )
+
+    connection.commit()
+    personalInfo()
+    return 1
+
+
+
+@eel.expose
+def displaySysCommand():
+    cursor.execute("SELECT * FROM system_command")
+    results = cursor.fetchall()
+    jsonArr = json.dumps(results)
+    eel.displaySysCommand(jsonArr)
+    return 1
+
+
+@eel.expose
+def deleteSysCommand(id):
+    cursor.execute("DELETE FROM system_command WHERE id = ?", (id,))
+    connection.commit()
+
+
+@eel.expose
+def addSysCommand(key, value):
+    cursor.execute(
+        '''INSERT INTO system_command VALUES (?, ?, ?)''', (None,key, value))
+    connection.commit()
+
+
+@eel.expose
+def displayWebCommand():
+    cursor.execute("SELECT * FROM web_command")
+    results = cursor.fetchall()
+    jsonArr = json.dumps(results)
+    eel.displayWebCommand(jsonArr)
+    return 1
+
+
+@eel.expose
+def addWebCommand(key, value):
+    cursor.execute(
+        '''INSERT INTO web_command VALUES (?, ?, ?)''', (None, key, value))
+    connection.commit()
+
+
+@eel.expose
+def deleteWebCommand(id):
+    cursor.execute("DELETE FROM web_command WHERE id = ?", (id,))
+    connection.commit()
+
+
+@eel.expose
+def displayPhoneBookCommand():
+    cursor.execute("SELECT * FROM contacts")
+    results = cursor.fetchall()
+    jsonArr = json.dumps(results)
+    eel.displayPhoneBookCommand(jsonArr)
+    return 1
+
+
+@eel.expose
+def deletePhoneBookCommand(id):
+    cursor.execute("DELETE FROM contacts WHERE id = ?", (id,))
+    connection.commit()
+
+
+@eel.expose
+def InsertContacts(Name, Mobile, Email, City):
+    cursor.execute(
+        '''INSERT INTO contacts VALUES (?, ?, ?, ?, ?)''', (None,Name, Mobile, Email, City))
+    connection.commit()

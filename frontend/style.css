@@ -199,3 +199,297 @@ body{
   width: auto;
 }
 /* Chat Box Start End*/
+
+
+/* face auth styling start */
+.svg-frame {
+  position: relative;
+  width: 455px;
+  height: 455px;
+  transform-style: preserve-3d;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: change-view 2s ease-in infinite;
+}
+
+@keyframes change-view {
+
+  0%,
+  50% {
+    transform: rotate(-0deg) skew(00deg) translateX(calc(0 * var(--i))) translateY(calc(-0px * var(--i)));
+  }
+
+  70%,
+  100% {
+    transform: rotate(-80deg) skew(30deg) translateX(calc(45px * var(--i))) translateY(calc(-35px * var(--i)));
+  }
+}
+
+svg {
+  position: absolute;
+  transition: 0.5s;
+  transform-origin: center;
+  width: 450px;
+  height: 450px;
+  fill: none;
+  animation: change-view 5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 12px #00aaff);
+}
+
+#big-centro,
+#outter1,
+#solo-lines,
+#center,
+#outter-center,
+#bottom-dots,
+#center-lines,
+#squares,
+#top-dots {
+  transform-origin: center;
+  animation: rotate 4s ease-in-out infinite alternate;
+}
+
+#big-centro {
+  animation-delay: -1.5s;
+}
+
+#outter1 {
+  animation-delay: -1.2s;
+}
+
+#center {
+  animation-delay: -2.2s;
+}
+
+#bottom-dots,
+#top-dots {
+  animation-duration: 7s;
+}
+
+#center-lines,
+#outter-center {
+  animation-duration: 6s;
+  animation-delay: -3s;
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* face auth styling end */
+
+
+/* settins modal and etc etc */
+.glass-effect {
+  background: rgba(0, 0, 0, 0.205);
+  border: #002bff 1px;
+  box-shadow: 0 0 20px rgb(25, 0, 255),
+    inset 0 0 0px rgb(25, 0, 255);
+}
+.glass-effect p{
+  color: white;
+}
+
+@supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+  .glass-effect {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+.nav-tabs .nav-item.show .nav-link,
+.nav-tabs .nav-link.active {
+  background-color: #002bff;
+  color: white;
+  border: none;
+  box-shadow: 0 0 20px rgb(25, 0, 255),
+    inset 0 0 0px rgb(25, 0, 255);
+}
+
+.nav-tabs {
+  border-bottom: none
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.295);
+}
+
+.glassy-form {
+
+  color: white;
+  background-color: #ffffff1a;
+  border: 1px solid rgba(255, 255, 255, 0.295);
+
+}
+
+.glassy-form:focus {
+  color: white;
+  background-color: #1a1a1aba;
+  border: 1px solid rgba(255, 255, 255, 0.295);
+}
+
+.nav-pills .nav-link.active,
+.nav-pills .show>.nav-link {
+  background-color: transparent;
+}
+
+.btn-glow {
+  background-color: rgb(0, 255, 55);
+  width: 20%;
+  color: white;
+  border: none;
+  box-shadow: 0 0 20px rgb(0, 255, 55),
+    inset 0 0 0px rgb(25, 255, 55);
+}
+
+.btn-glow:hover {
+  background-color: rgb(0, 190, 41);
+  color: wheat;
+}
+
+.btn-glow:focus {
+  color: white;
+  background-color: rgb(0, 255, 55);
+  box-shadow: 0 0 30px rgb(0, 255, 55),
+    inset 0 0 0px rgb(25, 255, 55);
+}
+
+.btn-glow-red {
+  background-color: rgb(255, 0, 0);
+  color: white;
+  border: none;
+  box-shadow: 0 0 20px rgb(255, 0, 0),
+    inset 0 0 0px rgb(255, 0, 0), ;
+}
+
+.btn-glow-red:hover {
+  color: wheat;
+  background-color: rgb(212, 0, 0)
+}
+
+.btn-glow-red:focus {
+  color: white;
+  background-color: rgb(255, 0, 0);
+  box-shadow: 0 0 30px rgb(255, 0, 0),
+    inset 0 0 0px rgb(255, 0, 0);
+}
+
+/* Glass Effect Modal */
+
+
+/* Table Scroll Property */
+
+
+
+.table-scroll {
+  height: 270px;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+}
+
+/* width */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 40px;
+
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  border-radius: 20px;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #272727;
+  border-radius: 20px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #353535;
+}
+.toast-container{
+  z-index: 9999; 
+}
+
+/* Table Scroll Property */
+
+
+
+.glassy-form::placeholder {
+  color: rgba(255, 255, 255, 0.7); /* white with 70% opacity */
+}
+.glassy-form::-webkit-input-placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+.glassy-form:-ms-input-placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+.glassy-form::-ms-input-placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+.glassy-form::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+
+/* Match tables to Edit Profile tab style */
+
+.table-scroll {
+  background-color: #ffffff1a; /* same semi-transparent white as .glassy-form */
+  border: 1px solid rgba(255, 255, 255, 0.150);
+  border-radius: 10px;
+  padding: 10px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: white;
+}
+
+/* Table container padding like Edit Profile's .p-4 sections */
+.table-responsive {
+  padding: 10px;
+}
+
+/* Table itself styled like input fields */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: transparent; /* Keep consistent transparency */
+  color: white;
+}
+
+.table thead th {
+  background-color: #1a1a1aba; /* same tone as glassy-form */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.150);
+  font-weight: 500;
+  color: white;
+  padding: 10px;
+}
+
+.table tbody td {
+  background-color: #ffffff1a;
+  border-top: 1px solid rgba(255, 255, 255, 0.150);
+  color: white;
+  padding: 10px;
+}
+
+/* Row hover same darken effect as focused glassy-form */
+.table tbody tr:hover td {
+  background-color: #1a1a1a9c; /* same as .glassy-form:focus */
+}
+
+/* Make scrollbar and scroll area consistent */
+.table-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.table-scroll::-webkit-scrollbar-thumb {
+  background-color: #272727;
+  border-radius: 10px;
+}
+.table-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #353535;
+}

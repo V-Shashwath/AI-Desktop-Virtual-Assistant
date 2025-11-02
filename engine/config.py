@@ -1,1 +1,2 @@
 ASSISTANT_NAME = "adva"
+LLM_KEY = "AIzaSyD3xE7BngtiPhIuOwFjEQnaN_A1aKxPZRM"

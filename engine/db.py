@@ -27,7 +27,7 @@ cursor = connection.cursor()
 # connection.commit()
 
 # Create a table with the desired columns
-# cursor.execute('''CREATE TABLE IF NOT EXISTS contacts (id integer primary key, name VARCHAR(200), mobile_no VARCHAR(255), email VARCHAR(255) NULL)''')
+# cursor.execute('''CREATE TABLE IF NOT EXISTS contacts (id integer primary key, name VARCHAR(200), mobile_no VARCHAR(255), email VARCHAR(255) NULL, address VARCHAR(255) NULL)''')
 
 # Inserting single contact
 # query = "INSERT INTO contacts VALUES (null,'pawan', '1234567890','null')"
@@ -57,6 +57,14 @@ cursor = connection.cursor()
 # cursor.execute("SELECT mobile_no FROM contacts WHERE LOWER(name) LIKE ? OR LOWER(name) LIKE ?", ('%' + query + '%', query + '%'))
 # results = cursor.fetchall()
 # print(results[0][0])
+
+
+# Adding personal info table
+# query = "CREATE TABLE IF NOT EXISTS personal_info(name VARCHAR(100), mobile VARCHAR(40), email VARCHAR(200), city VARCHAR(300))"
+# cursor.execute(query)
+
+# Add Column in contacts table
+# cursor.execute("ALTER TABLE contacts ADD COLUMN address VARCHAR(255)")
 
 #------------------------------------------------
 
