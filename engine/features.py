@@ -306,6 +306,7 @@ import google.generativeai as genai
 import os
 from engine.command import speak, takeCommand
 from engine.helper import markdown_to_text
+import sqlite3
 
 # Optional: suppress Gemini gRPC warnings
 os.environ["GRPC_VERBOSITY"] = "NONE"
@@ -314,99 +315,189 @@ os.environ["GRPC_CPP_MIN_LOG_LEVEL"] = "3"
 # Maintain short-term conversational context
 conversation_context = []  
 
-# Load your Gemini API key and assistant name (ensure they're defined in config.py)
+# Load your Gemini API key and assistant name
 from engine.config import LLM_KEY, ASSISTANT_NAME
+
+# Database connection
+try:
+    connection_gemini = sqlite3.connect("adva.db", check_same_thread=False)
+    cursor_gemini = connection_gemini.cursor()
+except:
+    connection_gemini = None
+    cursor_gemini = None
+
+
+def get_user_context():
+    """Get personalized context from database"""
+    context = {
+        'user_name': None,
+        'location': 'Bengaluru, Karnataka, IN',
+        'contacts_available': False,
+        'custom_commands': False
+    }
+    
+    try:
+        if cursor_gemini:
+            # Get user info
+            cursor_gemini.execute("SELECT name, city, mobile, email FROM personal_info")
+            result = cursor_gemini.fetchone()
+            if result:
+                context['user_name'] = result[0] if result[0] else None
+                context['location'] = result[1] if result[1] else 'Bengaluru, Karnataka, IN'
+            
+            # Check contacts
+            cursor_gemini.execute("SELECT COUNT(*) FROM contacts")
+            count = cursor_gemini.fetchone()[0]
+            context['contacts_available'] = count > 0
+            
+            # Check custom commands
+            cursor_gemini.execute("SELECT COUNT(*) FROM system_command")
+            count = cursor_gemini.fetchone()[0]
+            context['custom_commands'] = count > 0
+    except Exception as e:
+        print(f"Context error: {e}")
+    
+    return context
 
 
 def geminai(query):
     """
-    Handles natural language interaction via Google Gemini model.
-    Context-aware, voice-integrated, and GUI-friendly.
+    Enhanced AI assistant with Gemini - Accurate, context-aware, assistant-focused
     """
     global conversation_context
+    
     try:
-        # Clean query for clarity
+        # Clean query
         query = query.replace(ASSISTANT_NAME, "").replace("search", "").strip()
-
+        
         # Configure Gemini API
         genai.configure(api_key=LLM_KEY)
-
+        
         # Load Gemini model
         model = genai.GenerativeModel("gemini-2.0-flash")
-
-        # Build short-term conversation memory
+        
+        # Get user context from database
+        user_ctx = get_user_context()
+        
+        # Build conversation memory
         context_summary = ""
         if conversation_context:
             context_summary = "\n".join(
-                [f"User: {c['user']}\nAssistant: {c['assistant']}" for c in conversation_context[-3:]]
+                [f"User: {c['user']}\nAssistant: {c['assistant']}" 
+                 for c in conversation_context[-3:]]
             )
+        
+        # ===================== ENHANCED SYSTEM PROMPT =====================
+        user_name_part = f"The user's name is {user_ctx['user_name']}." if user_ctx['user_name'] else "Address the user respectfully."
+        
+        prompt = f"""You are {ASSISTANT_NAME}, an intelligent AI assistant integrated into a desktop virtual assistant system.
 
-        # Finest system prompt — context-aware, polite, and TTS-friendly
-        prompt = f"""
-You are {ASSISTANT_NAME}, a smart and polite AI module inside a Desktop Virtual Assistant system.
-You understand the user's natural language, use recent conversation context, 
-and can ask for clarification when necessary.
+### YOUR ROLE & PERSONALITY:
+- You are helpful, accurate, professional, and friendly
+- You provide correct, factual, and verified information only
+- You admit when you don't know something rather than guessing
+- You are concise but thorough - no unnecessary rambling
+- You speak naturally like a professional assistant would
+- You maintain context and remember previous parts of the conversation
 
-### System Context:
-- You are part of a layered AI assistant with facial recognition, speech recognition,
-  NLP, command execution, API access, data storage, and GUI display.
-- You communicate through text and voice (TTS).
-- Keep responses short, natural, and easy to speak aloud (max 2–3 sentences).
-- Avoid markdown, HTML, or code formatting.
+### SYSTEM CAPABILITIES YOU SUPPORT:
+- Face authentication and security
+- Voice and text command processing
+- Opening applications and websites
+- YouTube playback and search
+- Phone calls and messaging (via Android)
+- Weather information and news updates
+- System controls (volume, brightness, windows, tabs)
+- Contact and command management
+- Web searches and information lookup
 
-### Behavior Rules:
-1. Be concise, friendly, and confident.
-2. Use previous context to understand follow-up questions.
-3. If the user's query is unclear or incomplete, politely ask for clarification.
-4. When asked to perform a task, acknowledge or confirm action.
-5. Do not repeat long intros or greetings multiple times in one session.
+### USER CONTEXT:
+- {user_name_part}
+- Location: {user_ctx['location']}
+- Has saved contacts: {'Yes' if user_ctx['contacts_available'] else 'No'}
+- Has custom commands: {'Yes' if user_ctx['custom_commands'] else 'No'}
 
-### Example Interactions:
-User: "Open YouTube"
-You: "Opening YouTube now."
+### RESPONSE GUIDELINES:
+1. **Accuracy First**: Only provide information you're confident about. If unsure, say "I'm not completely sure about that" or suggest a web search.
 
-User: "What is AI?"
-You: "Artificial Intelligence is how computers learn and make decisions like humans."
+2. **Be Concise**: Keep responses to 2-3 sentences for simple queries. Be detailed only when needed.
 
-User: "Check the weather"
-You: "Sure, can you please tell me your location?"
+3. **Natural Speech**: Your responses will be spoken aloud via text-to-speech. Avoid:
+   - Markdown formatting (**, *, #, etc.)
+   - Lists with bullets or numbers (use "first, second, third" instead)
+   - Code blocks or technical formatting
+   - Long parenthetical statements
 
-### Previous Context:
-{context_summary if context_summary else "None"}
+4. **Context Awareness**: Use previous conversation context to understand follow-up questions.
 
-### Current User Query:
-{query}
-"""
+5. **Assistant Actions**: When users ask you to perform actions:
+   - For things you CAN'T do: "I don't have direct control over that, but you can say 'open Chrome' or 'volume up' for system controls."
+   - For things I CAN do: "I can help you with that. Try saying 'open YouTube' or 'call John'."
 
+6. **Clarification**: If a query is ambiguous, ask ONE specific clarifying question.
+
+7. **Facts & Knowledge**:
+   - For factual questions: Provide accurate, concise answers
+   - For opinions: Present balanced viewpoints
+   - For current events: Acknowledge your knowledge cutoff (January 2025)
+   - For local/time-sensitive info: Suggest using "what's the weather" or "tell me the news"
+
+8. **Errors & Limitations**:
+   - Don't apologize excessively - once is enough
+   - Be honest about limitations
+   - Provide alternatives when possible
+
+### CONVERSATION TONE:
+- Professional yet warm and approachable
+- Patient and understanding
+- Encouraging and positive
+- Never condescending or robotic
+
+### PREVIOUS CONVERSATION:
+{context_summary if context_summary else "This is the start of the conversation."}
+
+### CURRENT USER QUERY:
+"{query}"
+
+### YOUR RESPONSE:
+Provide a helpful, accurate, and natural response that will be spoken aloud. Remember: be concise, accurate, and conversational."""
+
+        # =================== END OF ENHANCED PROMPT ===================
+        
         # Generate response from Gemini
         response = model.generate_content(prompt)
         ai_reply = response.text.strip()
+        
+        # Clean response for TTS (remove markdown)
         filter_text = markdown_to_text(ai_reply)
-
+        
+        # Additional cleaning for speech
+        filter_text = filter_text.replace('*', '').replace('#', '').replace('`', '')
+        filter_text = ' '.join(filter_text.split())  # Remove extra whitespace
+        
         # Speak and display output
         speak(filter_text)
         print(f"{ASSISTANT_NAME}:", filter_text)
-
-        # Store this exchange for context
+        
+        # Store this exchange for context (keep last 5 exchanges)
         conversation_context.append({
             "user": query,
             "assistant": filter_text
         })
         if len(conversation_context) > 5:
             conversation_context.pop(0)
-
-        # --- Clarification logic ---
-        # If Gemini asks for clarification (contains "please" + "?"), listen for response
-        if "?" in filter_text and "please" in filter_text.lower():
-            speak("Can you please clarify that?")
+        
+        # Handle clarification requests
+        if "?" in filter_text and any(word in filter_text.lower() 
+                                     for word in ["could you", "can you clarify", "please specify", "which"]):
+            speak("I'm listening for your response.")
             user_response = takeCommand()
-
-            if user_response and user_response.strip() != "":
+            if user_response and user_response.strip():
                 geminai(user_response)
-
+    
     except Exception as e:
         print("Error in geminai():", e)
-        speak("Sorry, I encountered an error while processing your request.")
+        speak("I apologize, I encountered an error while processing your request. Please try rephrasing or ask something else.")
 
 
 # android automation

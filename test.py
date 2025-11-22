@@ -50,3 +50,8 @@
 
 # import subprocess
 # subprocess.run(["adb", "shell", "input tap 980 2250"])
+
+from engine.system_commands import volume_up
+
+
+volume_up()

@@ -2,3 +2,94 @@
 /contacts.csv
 engine/config.py
 engine/auth/samples/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+envadva/
+venv/
+env/
+ENV/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+adva.db
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Screenshots
+screenshots/
+
+# Face Recognition Data
+engine/auth/samples/
+engine/auth/trainer/*.yml
+
+# CSV Files (may contain sensitive data)
+contacts.csv
+
+# API Keys (IMPORTANT!)
+engine/config_local.py
+.env
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Testing
+.pytest_cache/
+.tox/
+
+# Distribution
+*.egg
+*.whl
+
+# Documentation builds
+docs/_build/
+
+# Backup files
+*.bak
+*.backup
+
+# Windows specific
+*.lnk
+
+# Mac specific
+.AppleDouble
+.LSOverride
+
+# Android
+*.apk
+*.aab

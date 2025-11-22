@@ -107,6 +107,52 @@ $(document).ready(function () {
         }
     });
     
+    // ===== BACKGROUND BUTTON ===== 
+    let backgroundActive = false;
+    
+    $('#BackgroundBtn').click(function () {
+        $(this).addClass('button-click-effect');
+        setTimeout(() => $(this).removeClass('button-click-effect'), 300);
+        
+        eel.toggleBackgroundListener()(function(status) {
+            backgroundActive = status;
+            
+            if (status) {
+                $('#BackgroundBtn')
+                    .removeClass('btn-glow-green')
+                    .addClass('btn-glow-red');
+                
+                $('#BackgroundStatus')
+                    .text('Background Mode: ACTIVE')
+                    .css('color', '#ff0000')
+                    .addClass('active');
+                
+                swal({
+                    title: "🎤 Background Mode Activated!",
+                    text: "Say 'Hey Computer' to wake me up!",
+                    icon: "success",
+                    button: "Got it!"
+                });
+            } else {
+                $('#BackgroundBtn')
+                    .removeClass('btn-glow-red')
+                    .addClass('btn-glow-green');
+                
+                $('#BackgroundStatus')
+                    .text('Background Mode: OFF')
+                    .css('color', '#00ff00')
+                    .removeClass('active');
+                
+                swal({
+                    title: "👤 Background Mode Deactivated",
+                    text: "Background listening has been stopped.",
+                    icon: "info",
+                    button: "OK"
+                });
+            }
+        });
+    });
+    
     // Settings Code
 
     eel.personalInfo()();

@@ -290,17 +290,20 @@
                         </div>
                     </div>
 
+                    
                     <h5 class="text-light text text-center">Ask Me Anything</h5>
 
-                    <div class="col-md-12 mt-4 pt-4">
+                    <div class="col-md-12 mt-3 pt-3">
                         <div class="text-center">
                             <div id="textInput" class="d-flex">
                                 <input type="text" class="input-field" name="chatbox" id="chatbox"
                                     placeholder="Type here ...">
                                 <button id="SendBtn" class="glow-on-hover"><i class="bi bi-send"></i></button>
                                 <button id="MicBtn" class="glow-on-hover"><i class="bi bi-mic"></i></button>
+                                <button id="BackgroundBtn" class="glow-on-hover btn-glow-green" title="Toggle Background Listening Mode"><i class="bi bi-soundwave"></i></button>
                                 <button id="ChatBtn" class="glow-on-hover" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling"><i class="bi bi-chat-dots"></i></button>
                                 <button id="SettingsBtn" data-bs-toggle="modal" data-bs-target="#exampleModal" class="glow-on-hover"><i class="bi bi-gear"></i></button>
+                                <h6 id="BackgroundStatus" class="text-light text-center mb-2">Background Mode: OFF</h6>
                             </div>
                         </div>
                     </div>
@@ -329,7 +332,7 @@
             id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
             <div class="offcanvas-header">
                 <h5 class="offcanvas-title text-white" id="offcanvasScrollingLabel">Chats</h5>
-                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
             <div id="chat-canvas-body" class="offcanvas-body">
             <!-- Chatting code here -->
@@ -579,7 +582,7 @@
                                                 aria-labelledby="HelpCommand-tab">
 
                                                 <h1>Developed By</h1>
-                                                <h3>Digambar Chaudhari</h3>
+                                                <h3>NIE team</h3>
 
 
                                             </div>
