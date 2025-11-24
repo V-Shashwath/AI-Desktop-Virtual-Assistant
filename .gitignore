@@ -2,7 +2,6 @@
 /contacts.csv
 engine/config.py
 engine/auth/samples/
-engine/config.py
 
 # Python
 __pycache__/
