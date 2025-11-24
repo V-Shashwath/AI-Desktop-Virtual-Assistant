@@ -166,7 +166,7 @@ def extract_intent(query):
                 r'\bminimize\s+(window|this)',
                 r'\bminimize\b'
             ],
-            'keywords': ['minimize', 'window'],
+            'keywords': ['minimize', 'minimise','window'],
             'priority': 14
         },
         'window_maximize': {

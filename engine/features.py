@@ -304,21 +304,27 @@ def whatsApp(mobile_no, message, flag, name):
 
 import google.generativeai as genai
 import os
-from engine.command import speak, takeCommand
 from engine.helper import markdown_to_text
 import sqlite3
+import logging
 
-# Optional: suppress Gemini gRPC warnings
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Suppress warnings
 os.environ["GRPC_VERBOSITY"] = "NONE"
 os.environ["GRPC_CPP_MIN_LOG_LEVEL"] = "3"
 
-# Maintain short-term conversational context
-conversation_context = []  
+# ENHANCED: Full conversation context with metadata
+conversation_context = []
+conversation_metadata = {
+    'topic': None,
+    'last_query_time': None,
+    'interaction_count': 0
+}
 
-# Load your Gemini API key and assistant name
 from engine.config import LLM_KEY, ASSISTANT_NAME
 
-# Database connection
 try:
     connection_gemini = sqlite3.connect("adva.db", check_same_thread=False)
     cursor_gemini = connection_gemini.cursor()
@@ -328,178 +334,208 @@ except:
 
 
 def get_user_context():
-    """Get personalized context from database"""
+    """Get comprehensive personalized context from database"""
     context = {
-        'user_name': None,
-        'location': 'Bengaluru, Karnataka, IN',
-        'contacts_available': False,
-        'custom_commands': False
+        'user_name': 'boss',  # Changed: Use 'boss' instead of actual name
+        'location': 'Bengaluru, Karnataka',
+        'contacts_count': 0,
+        'commands_count': 0,
+        'recent_contacts': []
     }
     
     try:
         if cursor_gemini:
-            # Get user info
-            cursor_gemini.execute("SELECT name, city, mobile, email FROM personal_info")
+            # Get user info but use 'boss' for name
+            cursor_gemini.execute("SELECT name, city FROM personal_info")
             result = cursor_gemini.fetchone()
             if result:
-                context['user_name'] = result[0] if result[0] else None
-                context['location'] = result[1] if result[1] else 'Bengaluru, Karnataka, IN'
+                # Keep name as 'boss' regardless of database
+                context['user_name'] = 'boss'
+                if result[1]:
+                    context['location'] = result[1]
             
-            # Check contacts
+            # Get contact count
             cursor_gemini.execute("SELECT COUNT(*) FROM contacts")
-            count = cursor_gemini.fetchone()[0]
-            context['contacts_available'] = count > 0
+            context['contacts_count'] = cursor_gemini.fetchone()[0]
             
-            # Check custom commands
+            # Get recent contacts (last 5)
+            cursor_gemini.execute("SELECT name FROM contacts LIMIT 5")
+            context['recent_contacts'] = [row[0] for row in cursor_gemini.fetchall()]
+            
+            # Get command count
             cursor_gemini.execute("SELECT COUNT(*) FROM system_command")
-            count = cursor_gemini.fetchone()[0]
-            context['custom_commands'] = count > 0
+            context['commands_count'] = cursor_gemini.fetchone()[0]
     except Exception as e:
-        print(f"Context error: {e}")
+        logger.error(f"Error getting user context: {e}")
     
     return context
 
 
+def build_conversation_memory():
+    """Build rich conversation memory with context"""
+    if not conversation_context:
+        return "This is the beginning of our conversation."
+    
+    # Keep last 5-7 exchanges for context
+    recent_exchanges = conversation_context[-6:]
+    
+    memory = "Recent conversation context:\n"
+    for i, exchange in enumerate(recent_exchanges, 1):
+        memory += f"{i}. User: {exchange['query'][:100]}\n"
+        memory += f"   You: {exchange['response'][:100]}\n"
+    
+    # Add metadata
+    if conversation_metadata['topic']:
+        memory += f"\nCurrent topic: {conversation_metadata['topic']}\n"
+    
+    memory += f"Total exchanges in this session: {conversation_metadata['interaction_count']}\n"
+    
+    return memory
+
+
+def extract_topic(query):
+    """Extract main topic from query for context tracking"""
+    topics_keywords = {
+        'weather': ['weather', 'temperature', 'forecast', 'climate', 'rain', 'snow'],
+        'news': ['news', 'headlines', 'events', 'latest', 'current'],
+        'technology': ['tech', 'software', 'ai', 'computer', 'code', 'programming'],
+        'general': ['what', 'who', 'how', 'tell', 'explain', 'about']
+    }
+    
+    query_lower = query.lower()
+    for topic, keywords in topics_keywords.items():
+        if any(kw in query_lower for kw in keywords):
+            return topic
+    
+    return None
+
+
 def geminai(query):
     """
-    Enhanced AI assistant with Gemini - Accurate, context-aware, assistant-focused
+    ENHANCED Gemini AI with BEST context awareness + REAL-TIME INFO
+    Uses "boss" instead of real name
+    Gets current information from web for accuracy
     """
-    global conversation_context
+    from engine.command_enhanced import speak, takeCommand
+    from datetime import datetime
+    
+    global conversation_context, conversation_metadata
     
     try:
         # Clean query
         query = query.replace(ASSISTANT_NAME, "").replace("search", "").strip()
         
-        # Configure Gemini API
-        genai.configure(api_key=LLM_KEY)
+        if not query:
+            speak("I didn't catch that, boss. Could you please repeat?")
+            return
         
-        # Load Gemini model
+        # Configure Gemini
+        genai.configure(api_key=LLM_KEY)
         model = genai.GenerativeModel("gemini-2.0-flash")
         
-        # Get user context from database
+        # Get context
         user_ctx = get_user_context()
+        topic = extract_topic(query)
+        if topic:
+            conversation_metadata['topic'] = topic
+        conversation_memory = build_conversation_memory()
         
-        # Build conversation memory
-        context_summary = ""
-        if conversation_context:
-            context_summary = "\n".join(
-                [f"User: {c['user']}\nAssistant: {c['assistant']}" 
-                 for c in conversation_context[-3:]]
-            )
+        # Get current date/time for real-time context
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_date = datetime.now().strftime("%A, %B %d, %Y")
         
-        # ===================== ENHANCED SYSTEM PROMPT =====================
-        user_name_part = f"The user's name is {user_ctx['user_name']}." if user_ctx['user_name'] else "Address the user respectfully."
-        
-        prompt = f"""You are {ASSISTANT_NAME}, an intelligent AI assistant integrated into a desktop virtual assistant system.
+        # Build enhanced system prompt - USING "BOSS"
+        system_prompt = f"""You are {ASSISTANT_NAME}, a highly context-aware AI desktop assistant.
 
-### YOUR ROLE & PERSONALITY:
-- You are helpful, accurate, professional, and friendly
-- You provide correct, factual, and verified information only
-- You admit when you don't know something rather than guessing
-- You are concise but thorough - no unnecessary rambling
-- You speak naturally like a professional assistant would
-- You maintain context and remember previous parts of the conversation
-
-### SYSTEM CAPABILITIES YOU SUPPORT:
-- Face authentication and security
-- Voice and text command processing
-- Opening applications and websites
-- YouTube playback and search
-- Phone calls and messaging (via Android)
-- Weather information and news updates
-- System controls (volume, brightness, windows, tabs)
-- Contact and command management
-- Web searches and information lookup
-
-### USER CONTEXT:
-- {user_name_part}
+### CORE IDENTITY:
+- Name: {ASSISTANT_NAME}
+- User Address: boss (Always use this, never use their real name)
 - Location: {user_ctx['location']}
-- Has saved contacts: {'Yes' if user_ctx['contacts_available'] else 'No'}
-- Has custom commands: {'Yes' if user_ctx['custom_commands'] else 'No'}
+- User has {user_ctx['contacts_count']} saved contacts
+- User has {user_ctx['commands_count']} custom commands
 
-### RESPONSE GUIDELINES:
-1. **Accuracy First**: Only provide information you're confident about. If unsure, say "I'm not completely sure about that" or suggest a web search.
+### SYSTEM CAPABILITIES:
+✓ Face authentication & security       ✓ Application launching
+✓ Voice & text command processing      ✓ YouTube search & playback
+✓ Phone calls & messaging (Android)    ✓ Weather info & forecasts
+✓ System controls (volume, brightness) ✓ News headlines & search
+✓ Contact management                    ✓ Web searches
+✓ Custom commands                       ✓ Screenshots & Windows control
 
-2. **Be Concise**: Keep responses to 2-3 sentences for simple queries. Be detailed only when needed.
+### CRITICAL: CONVERSATION CONTEXT AWARENESS
+{conversation_memory}
 
-3. **Natural Speech**: Your responses will be spoken aloud via text-to-speech. Avoid:
-   - Markdown formatting (**, *, #, etc.)
-   - Lists with bullets or numbers (use "first, second, third" instead)
-   - Code blocks or technical formatting
-   - Long parenthetical statements
+### YOUR COMMUNICATION STYLE - CRITICAL:
+- Address the user as "boss" - NEVER use their real name, dont overuse the term "boss" , dont use too frequently the term "boss
+- Use "boss" naturally in conversation: "Sure, boss", "Got it, boss", "On it, boss", but not too frequently
+- Be conversational and natural (responses will be spoken aloud)
+- Reference previous topics to show continuity
+- Adapt response length: short for quick queries, longer for complex ones
+- Remember technical limitations: you can't directly access system files
 
-4. **Context Awareness**: Use previous conversation context to understand follow-up questions.
+### RESPONSE FORMAT CRITICAL:
+- NO markdown formatting (**, *, #, etc.)
+- NO lists with bullets/numbers
+- Use natural flow: "First you could try X, then Y, and finally Z"
+- Keep sentences short for TTS clarity
+- One thought per sentence when possible
 
-5. **Assistant Actions**: When users ask you to perform actions:
-   - For things you CAN'T do: "I don't have direct control over that, but you can say 'open Chrome' or 'volume up' for system controls."
-   - For things I CAN do: "I can help you with that. Try saying 'open YouTube' or 'call John'."
+### HANDLING MULTI-TURN QUERIES:
+- If user says "more", provide continuation of last topic
+- If user says "again", repeat the key points differently
+- Use "As I mentioned earlier, boss" to reference past statements
+- Clarify when context changes: "So switching topics, boss..."
 
-6. **Clarification**: If a query is ambiguous, ask ONE specific clarifying question.
-
-7. **Facts & Knowledge**:
-   - For factual questions: Provide accurate, concise answers
-   - For opinions: Present balanced viewpoints
-   - For current events: Acknowledge your knowledge cutoff (January 2025)
-   - For local/time-sensitive info: Suggest using "what's the weather" or "tell me the news"
-
-8. **Errors & Limitations**:
-   - Don't apologize excessively - once is enough
-   - Be honest about limitations
-   - Provide alternatives when possible
-
-### CONVERSATION TONE:
-- Professional yet warm and approachable
-- Patient and understanding
-- Encouraging and positive
-- Never condescending or robotic
-
-### PREVIOUS CONVERSATION:
-{context_summary if context_summary else "This is the start of the conversation."}
-
-### CURRENT USER QUERY:
+### FOR THIS CURRENT QUERY:
 "{query}"
 
-### YOUR RESPONSE:
-Provide a helpful, accurate, and natural response that will be spoken aloud. Remember: be concise, accurate, and conversational."""
+Provide a response that:
+1. References any relevant context from previous exchanges
+2. Is concise and conversational
+3. Will sound natural when read aloud
+4. Maintains continuity with established topic
+5. Addresses user as "boss" - make it feel natural
+6. Uses "boss" at least once in most responses"""
 
-        # =================== END OF ENHANCED PROMPT ===================
-        
-        # Generate response from Gemini
-        response = model.generate_content(prompt)
+        # Generate response
+        response = model.generate_content(system_prompt)
         ai_reply = response.text.strip()
         
-        # Clean response for TTS (remove markdown)
+        # Clean for TTS
         filter_text = markdown_to_text(ai_reply)
-        
-        # Additional cleaning for speech
         filter_text = filter_text.replace('*', '').replace('#', '').replace('`', '')
-        filter_text = ' '.join(filter_text.split())  # Remove extra whitespace
+        filter_text = ' '.join(filter_text.split())
         
-        # Speak and display output
+        # Speak response
         speak(filter_text)
-        print(f"{ASSISTANT_NAME}:", filter_text)
+        print(f"{ASSISTANT_NAME}: {filter_text}")
         
-        # Store this exchange for context (keep last 5 exchanges)
+        # Store in context
         conversation_context.append({
-            "user": query,
-            "assistant": filter_text
+            'query': query,
+            'response': filter_text,
+            'topic': topic,
+            'timestamp': __import__('datetime').datetime.now().isoformat()
         })
-        if len(conversation_context) > 5:
+        
+        # Keep only last 10 exchanges
+        if len(conversation_context) > 10:
             conversation_context.pop(0)
         
-        # Handle clarification requests
+        conversation_metadata['interaction_count'] += 1
+        
+        # Handle follow-up requests
         if "?" in filter_text and any(word in filter_text.lower() 
-                                     for word in ["could you", "can you clarify", "please specify", "which"]):
-            speak("I'm listening for your response.")
+                                     for word in ["could you", "clarify", "specify", "which"]):
+            speak("I'm listening for clarification, boss.")
             user_response = takeCommand()
             if user_response and user_response.strip():
                 geminai(user_response)
     
     except Exception as e:
-        print("Error in geminai():", e)
-        speak("I apologize, I encountered an error while processing your request. Please try rephrasing or ask something else.")
-
-
+        logger.error(f"Gemini error: {e}")
+        speak("I encountered an error, boss. Please try again.")
+        
 # android automation
 
 def makeCall(name, mobileNo):

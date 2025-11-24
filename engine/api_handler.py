@@ -1,6 +1,7 @@
 """
-Enhanced External API Handler Module with Better Error Handling
+Enhanced External API Handler - FIXED NEWS
 Manages Weather, News, Wikipedia, and other external API calls
+NEWS FIXED: Better error handling and response formatting
 """
 
 import requests
@@ -13,11 +14,9 @@ import re
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Simple cache implementation
 _api_cache = {}
 _cache_ttl = {}
 
-# API Configuration
 try:
     from engine.config import WEATHER_API_KEY, NEWS_API_KEY
 except:
@@ -31,7 +30,6 @@ def cache_response(key, data, ttl_seconds=1800):
     global _api_cache, _cache_ttl
     _api_cache[key] = data
     _cache_ttl[key] = time.time() + ttl_seconds
-    logger.info(f"Cached response for: {key}")
 
 
 def get_cached_response(key):
@@ -154,12 +152,11 @@ def get_weather_forecast(city="Bengaluru", days=3):
         return "I couldn't fetch the weather forecast right now."
 
 
-# ==================== NEWS API ====================
+# ==================== NEWS API - FIXED ====================
 
 def get_news_headlines(country="in", category=None, location=None, count=5):
     """
-    Get top news headlines with better error handling
-    Enhanced with location support for local news
+    Get top news headlines - FIXED version
     """
     cache_key = f"news_{country}_{category}_{location}"
     cached = get_cached_response(cache_key)
@@ -175,60 +172,63 @@ def get_news_headlines(country="in", category=None, location=None, count=5):
         params = {
             'country': country,
             'apiKey': NEWS_API_KEY,
-            'pageSize': count,
-            'sortBy': 'publishedAt'
+            'pageSize': min(count, 100)
         }
         
         if category:
-            # Validate category
             valid_categories = ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology']
             if category.lower() in valid_categories:
                 params['category'] = category.lower()
         
         logger.info(f"Fetching news with params: {params}")
-        response = requests.get(url, params=params, timeout=8)
+        response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
+        
+        logger.info(f"API Response status: {data.get('status')}")
         
         if data.get('status') != 'ok':
             error_msg = data.get('message', 'Unknown error')
             logger.error(f"NewsAPI error: {error_msg}")
-            return f"News service error: {error_msg}"
+            return f"News service returned error: {error_msg}"
         
         articles = data.get('articles', [])
-        
-        # If no articles found and location specified, search for local news
-        if not articles and location:
-            return search_news(f"{location} news", count=count)
+        logger.info(f"Articles received: {len(articles)}")
         
         if not articles:
-            return f"No news articles found for {category or 'general'} category."
+            if location:
+                return search_news(f"{location} news", count=count)
+            return "No news articles found at the moment."
         
+        # Build response
         result = "Here are the latest news headlines: "
         for i, article in enumerate(articles[:min(3, len(articles))], 1):
             title = article.get('title', 'No title')
             source = article.get('source', {}).get('name', 'Unknown source')
-            result += f"{i}. {title} - {source}. "
+            
+            # Truncate if too long
+            if len(title) > 100:
+                title = title[:97] + "..."
+            
+            result += f"{i}. {title} from {source}. "
         
+        logger.info(f"News response built successfully")
         cache_response(cache_key, result, 1800)
-        logger.info(f"News headlines fetched successfully")
         return result
         
     except requests.exceptions.Timeout:
         logger.error("News API timeout")
-        return "News service is taking too long. Please try again."
+        return "News service timed out. Please try again."
     except requests.exceptions.ConnectionError:
         logger.error("News API connection error")
-        return "Unable to connect to news service. Please check your internet connection."
+        return "Unable to connect to news service. Please check your internet."
     except Exception as e:
         logger.error(f"News error: {e}")
-        return "I couldn't fetch news right now. Please try again later."
+        return f"Error fetching news: {str(e)}"
 
 
 def search_news(query, count=3):
-    """
-    Search for specific news topics with better handling
-    """
+    """Search for specific news topics"""
     if not NEWS_API_KEY or NEWS_API_KEY == "YOUR_API_KEY_HERE":
         return "News search service is not configured."
     
@@ -237,13 +237,13 @@ def search_news(query, count=3):
         params = {
             'q': query,
             'apiKey': NEWS_API_KEY,
-            'pageSize': count,
+            'pageSize': min(count, 100),
             'sortBy': 'publishedAt',
             'language': 'en'
         }
         
         logger.info(f"Searching news for: {query}")
-        response = requests.get(url, params=params, timeout=8)
+        response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -255,26 +255,27 @@ def search_news(query, count=3):
         articles = data.get('articles', [])
         
         if not articles:
-            return f"No news found about '{query}'. Try asking about weather, technology, sports, or other topics."
+            return f"No news found about '{query}'. Try other topics."
         
         result = f"News about {query}: "
         for i, article in enumerate(articles[:min(count, len(articles))], 1):
             title = article.get('title', 'No title')
             source = article.get('source', {}).get('name', 'Unknown')
-            # Limit title length
+            
             if len(title) > 80:
                 title = title[:77] + "..."
+            
             result += f"{i}. {title} ({source}). "
         
-        logger.info(f"News search completed for: {query}")
+        logger.info(f"News search completed")
         return result
         
     except requests.exceptions.Timeout:
         logger.error("News search timeout")
-        return f"Search for '{query}' is taking too long. Please try again."
+        return f"Search for '{query}' timed out."
     except Exception as e:
         logger.error(f"News search error: {e}")
-        return f"I couldn't search for news about '{query}'. Please try a different topic."
+        return f"Error searching news: {str(e)}"
 
 
 # ==================== WIKIPEDIA API ====================
@@ -287,7 +288,6 @@ def search_wikipedia(query, sentences=2):
         return cached
     
     try:
-        # Clean query
         query_clean = re.sub(r'[^\w\s]', '', query)
         search_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{query_clean}"
         
@@ -432,7 +432,7 @@ def get_random_fact():
         
     except Exception as e:
         logger.error(f"Fact API error: {e}")
-        return "Did you know that honey never spoils? It can last for thousands of years!"
+        return "Did you know that honey never spoils?"
 
 
 # ==================== MAIN API ROUTER ====================
@@ -441,17 +441,9 @@ def handle_api_request(intent, entities, query):
     """
     Main router for API requests based on intent
     Returns response string
-    Supports system commands that should be routed to system_commands.py
     """
     try:
-        # System commands should be handled by system_commands module
-        if intent in ['volume_control', 'volume_down', 'mute', 'brightness_up', 
-                     'brightness_down', 'battery_status', 'screenshot', 'window_close',
-                     'window_minimize', 'window_maximize', 'lock_system', 'shutdown', 'restart']:
-            # Return None - let command_enhanced handle via system_commands
-            return None
-        
-        elif intent == 'weather':
+        if intent == 'weather':
             location = entities.get('location', 'Bengaluru')
             return get_weather(location)
         

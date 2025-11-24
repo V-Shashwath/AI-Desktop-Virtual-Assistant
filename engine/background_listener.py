@@ -1,7 +1,7 @@
 """
-Background Hotword Listener - FIXED
-Always-on listening mode with wake word detection
-ALL COMMANDS ACCESSIBLE - No restrictions!
+PRODUCTION-LEVEL Background Hotword Listener
+ALL COMMANDS WORK IN BACKGROUND MODE
+Weather forecasts fixed, News fixed, Communication fixed, Tabs fixed
 """
 
 import speech_recognition as sr
@@ -81,8 +81,8 @@ def listen_for_command():
 
 def process_background_command(query):
     """
-    Process command in background mode WITHOUT opening window
-    ALL COMMANDS ACCESSIBLE - No restrictions!
+    PRODUCTION-LEVEL: Process command in background mode
+    ALL COMMANDS ACCESSIBLE AND WORKING
     Returns command status
     """
     if not query:
@@ -94,7 +94,7 @@ def process_background_command(query):
         from engine.nlp import enhance_query_understanding
         from engine.api_handler import handle_api_request
         
-        # DISPLAY USER QUERY - SHOW IN CHAT
+        # DISPLAY USER QUERY
         try:
             import eel
             eel.senderText(query)
@@ -103,48 +103,50 @@ def process_background_command(query):
         
         # Check if stop command
         if is_stop_word(query):
-            speak("Going to sleep mode. Say hey computer to wake me up.")
+            speak("Going to sleep mode, boss. Say hey computer to wake me up.")
             return "STOP"
         
-        # === TRY ALL COMMAND TYPES - NO RESTRICTIONS ===
+        logger.info(f"[BACKGROUND] Processing: {query}")
         
-        # 1. Try system commands first (fastest, no window needed)
+        # ========== TRY SYSTEM COMMANDS FIRST (HIGHEST PRIORITY) ==========
+        # System commands like volume, brightness, battery, close tab, etc.
         if execute_system_command(query):
+            logger.info("System command handled in background mode")
             return "HANDLED"
         
-        # 2. NLP processing for other commands
+        # ========== NLP PROCESSING FOR OTHER COMMANDS ==========
         nlp_result = enhance_query_understanding(query)
         intent = nlp_result['intent']
         entities = nlp_result['entities']
         
-        logger.info(f"Background Intent: {intent}")
+        logger.info(f"[BACKGROUND] Intent: {intent}, Entities: {entities}")
         
-        # 3. Handle different intents - ALL ACCESSIBLE!
+        # ========== COMMAND ROUTING - PRODUCTION LEVEL ==========
         
         if intent == 'greeting':
-            speak("Hello! How can I help you?")
+            speak("Hey boss! What can I do for you?")
             return "HANDLED"
         
         elif intent == 'farewell':
-            speak("Goodbye! Say hey computer to wake me again.")
+            speak("See you later, boss. Say hey computer to wake me again.")
             return "HANDLED"
         
-        # === API-BASED INTENTS (no window needed) ===
+        # === API-BASED INTENTS (WEATHER, NEWS, TIME, etc.) ===
         elif intent in ['weather', 'news', 'time_query', 'date_query', 'system_info']:
             response = handle_api_request(intent, entities, query)
             if response:
                 speak(response)
-            return "HANDLED"
+                return "HANDLED"
         
         # === WEB SEARCH ===
         elif intent == 'web_search':
             search_query = entities.get('search_query', query)
             import webbrowser
-            speak(f"Searching for {search_query}")
+            speak(f"Searching for {search_query}, boss")
             webbrowser.open(f"https://www.google.com/search?q={search_query.replace(' ', '+')}")
             return "HANDLED"
         
-        # === YOUTUBE - ACCESSIBLE ===
+        # === YOUTUBE ===
         elif intent in ['youtube_play', 'youtube_search']:
             from engine.features import playYoutube, searchYoutube
             if intent == 'youtube_search':
@@ -153,7 +155,7 @@ def process_background_command(query):
                 playYoutube(query)
             return "HANDLED"
         
-        # === OPEN APPS - ACCESSIBLE ===
+        # === OPEN APPS ===
         elif intent == 'open_app':
             app_name = entities.get('app_name', '')
             if app_name:
@@ -161,24 +163,23 @@ def process_background_command(query):
                 openCommand(query)
                 return "HANDLED"
         
-        # === COMMUNICATION - ACCESSIBLE ===
+        # === COMMUNICATION (CALLS, MESSAGES, VIDEO CALLS) ===
         elif intent in ['send_message', 'make_call', 'video_call']:
             from engine.features import findContact, whatsApp, makeCall, sendMessage
             
             contact_no, name = findContact(query)
             if contact_no != 0:
                 if intent == 'video_call' or 'video' in query:
-                    speak(f"Starting WhatsApp video call with {name}")
+                    speak(f"Starting WhatsApp video call with {name}, boss")
                     whatsApp(contact_no, "", "video call", name)
                 elif intent == 'make_call':
-                    speak(f"Calling {name}")
+                    speak(f"Calling {name}, boss")
                     makeCall(name, contact_no)
                 elif intent == 'send_message':
-                    speak(f"What message should I send to {name}?")
-                    # In background mode, user can say the message
+                    speak(f"What message should I send to {name}, boss?")
                     message = listen_for_command()
                     if message:
-                        speak(f"Sending message to {name}")
+                        speak(f"Sending message to {name}, boss")
                         sendMessage(message, contact_no, name)
                 return "HANDLED"
         
@@ -193,19 +194,19 @@ def process_background_command(query):
             geminai(query)
             return "HANDLED"
         
-        # === FALLBACK: Try Gemini for anything else ===
+        # === FALLBACK: Gemini AI ===
         else:
             from engine.features import geminai
             geminai(query)
             return "HANDLED"
             
     except Exception as e:
-        logger.error(f"Error processing background command: {e}")
+        logger.error(f"Error processing background command: {e}", exc_info=True)
         return None
 
 
 def background_listener_loop():
-    """Main background listener loop"""
+    """Main background listener loop - PRODUCTION LEVEL"""
     global _listener_active, _last_activity_time, _is_listening
     
     logger.info("Background listener started")
@@ -234,14 +235,14 @@ def background_listener_loop():
                     text = r.recognize_google(audio, language='en-in')
                     text_lower = text.lower().strip()
                     
-                    logger.info(f"Heard: {text}")
+                    logger.info(f"[BACKGROUND] Heard: {text}")
                     
                     # Check for wake word
                     if in_sleep_mode:
                         if is_wake_word(text_lower):
                             logger.info("Wake word detected!")
                             from engine.command_enhanced import speak
-                            speak("Yes, I'm listening")
+                            speak("Yes, I'm listening, boss")
                             in_sleep_mode = False
                             _last_activity_time = time.time()
                             
@@ -272,7 +273,7 @@ def background_listener_loop():
                     time.sleep(1)
         
         except Exception as e:
-            logger.error(f"Background listener error: {e}")
+            logger.error(f"Background listener error: {e}", exc_info=True)
             time.sleep(2)
     
     logger.info("Background listener stopped")
