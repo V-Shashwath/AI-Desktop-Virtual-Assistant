@@ -1,6 +1,7 @@
 """
 Enhanced External API Handler - FIXED NEWS
-Manages Weather, News, Wikipedia, and other external API calls
+Manages Weather, News, and other external API calls
+Wikipedia removed - all queries now go to Gemini AI
 NEWS FIXED: Better error handling and response formatting
 """
 
@@ -279,51 +280,7 @@ def search_news(query, count=3):
 
 
 # ==================== WIKIPEDIA API ====================
-
-def search_wikipedia(query, sentences=2):
-    """Search Wikipedia and get summary"""
-    cache_key = f"wiki_{query}"
-    cached = get_cached_response(cache_key)
-    if cached:
-        return cached
-    
-    try:
-        query_clean = re.sub(r'[^\w\s]', '', query)
-        search_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{query_clean}"
-        
-        logger.info(f"Searching Wikipedia for: {query}")
-        response = requests.get(search_url, timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'type' in data and data['type'] == 'not-found':
-            return f"I couldn't find information about '{query}' on Wikipedia."
-        
-        summary = data.get('extract', '')
-        
-        if not summary:
-            return f"No summary available for '{query}'."
-        
-        sentence_list = summary.split('. ')
-        result = '. '.join(sentence_list[:sentences])
-        if not result.endswith('.'):
-            result += '.'
-        
-        cache_response(cache_key, result, 3600)
-        logger.info(f"Wikipedia info fetched for: {query}")
-        return result
-        
-    except requests.exceptions.Timeout:
-        logger.error("Wikipedia timeout")
-        return "Wikipedia is taking too long. Please try again."
-    except requests.HTTPError as e:
-        if e.response.status_code == 404:
-            return f"I couldn't find a Wikipedia page for '{query}'."
-        logger.error(f"Wikipedia HTTP error: {e}")
-        return f"Error searching Wikipedia for '{query}'."
-    except Exception as e:
-        logger.error(f"Wikipedia error: {e}")
-        return "I couldn't access Wikipedia right now."
+# REMOVED: Wikipedia functionality removed - all queries now go to Gemini AI
 
 
 # ==================== SYSTEM INFO ====================
@@ -463,15 +420,11 @@ def handle_api_request(intent, entities, query):
         
         elif intent == 'web_search':
             search_query = entities.get('search_query', query)
-            if any(word in query.lower() for word in ['who is', 'what is', 'what are', 'define']):
-                wiki_result = search_wikipedia(search_query)
-                if "couldn't find" not in wiki_result.lower():
-                    return wiki_result
-            return search_news(search_query)
+            # Wikipedia removed - return None to use Gemini AI instead
+            return None
         
         elif intent == 'general_query':
-            if any(word in query.lower() for word in ['what', 'who', 'where', 'define']):
-                return search_wikipedia(query)
+            # Wikipedia removed - return None to use Gemini AI instead
             return None
         
         else:

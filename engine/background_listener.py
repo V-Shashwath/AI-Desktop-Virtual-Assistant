@@ -63,7 +63,8 @@ def listen_for_command():
             query = r.recognize_google(audio, language='en-in')
             logger.info(f"User said: {query}")
             _last_activity_time = time.time()
-            return query.lower().strip()
+            # Return original text (not lowercase) for better processing and display
+            return query.strip()
             
         except sr.WaitTimeoutError:
             _is_listening = False
@@ -94,12 +95,13 @@ def process_background_command(query):
         from engine.nlp import enhance_query_understanding
         from engine.api_handler import handle_api_request
         
-        # DISPLAY USER QUERY
+        # DISPLAY USER QUERY IN CHAT HISTORY IMMEDIATELY
         try:
             import eel
+            # Display the original query (not lowercase) in chat
             eel.senderText(query)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Could not display query in chat: {e}")
         
         # Check if stop command
         if is_stop_word(query):
@@ -108,14 +110,44 @@ def process_background_command(query):
         
         logger.info(f"[BACKGROUND] Processing: {query}")
         
+        # Convert to lowercase for processing
+        query_lower = query.lower().strip()
+        
+        # ========== HANDLE SINGLE-WORD COMMANDS ==========
+        # Single words that might be incomplete system commands
+        single_word_commands = {
+            'up': 'volume up',
+            'down': 'volume down',
+            'volume': None,  # Ask for clarification
+            'brightness': None,  # Ask for clarification
+            'bright': 'brightness up',
+            'dim': 'brightness down'
+        }
+        
+        if len(query_lower.split()) == 1 and query_lower in single_word_commands:
+            mapped_command = single_word_commands[query_lower]
+            if mapped_command:
+                # Map to full command
+                if execute_system_command(mapped_command):
+                    logger.info(f"Single word command '{query_lower}' mapped to '{mapped_command}'")
+                    return "HANDLED"
+            else:
+                # Ask for clarification
+                if query_lower == 'volume':
+                    speak("Do you want to increase or decrease the volume, boss?")
+                elif query_lower == 'brightness':
+                    speak("Do you want to increase or decrease the brightness, boss?")
+                return "HANDLED"
+        
         # ========== TRY SYSTEM COMMANDS FIRST (HIGHEST PRIORITY) ==========
         # System commands like volume, brightness, battery, close tab, etc.
-        if execute_system_command(query):
+        if execute_system_command(query_lower):
             logger.info("System command handled in background mode")
             return "HANDLED"
         
         # ========== NLP PROCESSING FOR OTHER COMMANDS ==========
-        nlp_result = enhance_query_understanding(query)
+        # Use lowercase for NLP processing
+        nlp_result = enhance_query_understanding(query_lower)
         intent = nlp_result['intent']
         entities = nlp_result['entities']
         
@@ -185,18 +217,21 @@ def process_background_command(query):
         
         # === GENERAL QUERIES ===
         elif intent == 'general_query':
-            response = handle_api_request(intent, entities, query)
+            # Try API handler first (returns None now since Wikipedia removed)
+            response = handle_api_request(intent, entities, query_lower)
             if response:
                 speak(response)
                 return "HANDLED"
-            # Try Gemini AI
+            # Always use Gemini AI for general queries
             from engine.features import geminai
+            # Use original query (not lowercase) for better Gemini responses
             geminai(query)
             return "HANDLED"
         
         # === FALLBACK: Gemini AI ===
         else:
             from engine.features import geminai
+            # Use original query (not lowercase) for better Gemini responses
             geminai(query)
             return "HANDLED"
             
@@ -257,7 +292,8 @@ def background_listener_loop():
                     
                     # Already active, process command
                     else:
-                        result = process_background_command(text_lower)
+                        # Use original text (not lowercase) for better processing
+                        result = process_background_command(text)
                         if result == "STOP":
                             in_sleep_mode = True
                             _last_activity_time = None

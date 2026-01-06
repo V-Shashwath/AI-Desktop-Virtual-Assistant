@@ -98,10 +98,13 @@ def takeCommand():
         query = r.recognize_google(audio, language='en-in')
         logger.info(f"User said: {query}")
         
+        # Display recognized query in chat history immediately
+        safe_eel_call('senderText', query)
         safe_eel_call('DisplayMessage', query)
-        time.sleep(1.5)
+        time.sleep(0.5)
         
-        return query.lower().strip()
+        # Return original query (not lowercase) so it can be displayed properly
+        return query.strip()
         
     except sr.UnknownValueError:
         logger.warning("Could not understand audio")
@@ -136,30 +139,67 @@ def expose_eel_functions():
             
             if input_mode == "voice":
                 query = takeCommand()
+                # Query already displayed in takeCommand(), no need to display again
             else:
-                query = str(message).strip().lower()
+                query = str(message).strip()
+                # Display text input in chat history
+                safe_eel_call('senderText', query)
             
             if not query:
                 safe_eel_call('ShowHood')
                 return
             
+            # Convert to lowercase for processing but keep original for display
+            query_lower = query.lower().strip()
+            
             logger.info(f"[{input_mode.upper()}] Query: {query}")
-            safe_eel_call('senderText', query)
+            
+            # Convert to lowercase for processing
+            query_lower = query.lower().strip()
             
             # ========== HANDLE MULTI-STEP CONTEXT ==========
             if command_context:
-                handle_context_command(query, input_mode)
+                handle_context_command(query_lower, input_mode)
                 return
+            
+            # ========== HANDLE SINGLE-WORD COMMANDS ==========
+            # Single words that might be incomplete system commands
+            single_word_commands = {
+                'up': 'volume up',
+                'down': 'volume down',
+                'volume': None,  # Ask for clarification
+                'brightness': None,  # Ask for clarification
+                'bright': 'brightness up',
+                'dim': 'brightness down'
+            }
+            
+            if len(query_lower.split()) == 1 and query_lower in single_word_commands:
+                mapped_command = single_word_commands[query_lower]
+                if mapped_command:
+                    # Map to full command
+                    if execute_system_command(mapped_command):
+                        logger.info(f"Single word command '{query_lower}' mapped to '{mapped_command}'")
+                        safe_eel_call('ShowHood')
+                        return
+                else:
+                    # Ask for clarification
+                    if query_lower == 'volume':
+                        speak("Do you want to increase or decrease the volume, boss?")
+                    elif query_lower == 'brightness':
+                        speak("Do you want to increase or decrease the brightness, boss?")
+                    safe_eel_call('ShowHood')
+                    return
             
             # ========== TRY SYSTEM COMMANDS FIRST (HIGHEST PRIORITY) ==========
             # System commands should work immediately without NLP
-            if execute_system_command(query):
+            # Use query_lower for system command matching
+            if execute_system_command(query_lower):
                 logger.info("System command executed")
                 safe_eel_call('ShowHood')
                 return
             
             # ========== NLP PROCESSING FOR OTHER COMMANDS ==========
-            enhanced_query = improve_query_with_context(query)
+            enhanced_query = improve_query_with_context(query_lower)
             nlp_result = enhance_query_understanding(enhanced_query)
             intent = nlp_result.get('intent')
             entities = nlp_result.get('entities', {})

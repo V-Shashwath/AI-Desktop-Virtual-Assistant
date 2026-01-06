@@ -233,7 +233,7 @@ import pygetwindow as gw
 def whatsApp(mobile_no, message, flag, name):
     # Set target_tab and assistant_message based on the flag
     if flag == 'message':
-        target_tab = 12  # You said 12 is the message box
+        target_tab = 14  # Message box tab position
         assistant_message = f"Message sent successfully to {name}"
 
         encoded_message = quote(message)
@@ -251,12 +251,10 @@ def whatsApp(mobile_no, message, flag, name):
     # Optional debug print
     print("[DEBUG] WhatsApp URL:", whatsapp_url)
 
-    # Launch WhatsApp twice for reliability
+    # Launch WhatsApp once (removed duplicate launch)
     full_command = f'start "" "{whatsapp_url}"'
     subprocess.run(full_command, shell=True)
-    time.sleep(5)
-    subprocess.run(full_command, shell=True)
-    time.sleep(3)
+    time.sleep(4)  # Wait for WhatsApp to open
 
     # Try to focus WhatsApp window
     try:
@@ -267,16 +265,24 @@ def whatsApp(mobile_no, message, flag, name):
     except Exception as e:
         print(f"[!] Window activation failed: {e}")
 
-    # Keyboard navigation
-    pyautogui.hotkey('ctrl', 'f')
-    time.sleep(1)
+    # For messages: URL already pre-fills the message, just send it
+    if flag == 'message':
+        # The message is already pre-filled in the text box via URL parameter
+        # Wait for WhatsApp to fully load, then just press Enter to send
+        # Do NOT navigate or type anything - the message is already there!
+        time.sleep(2)  # Wait for WhatsApp to fully load with pre-filled message
+        pyautogui.hotkey('enter')  # Send the pre-filled message
+    else:
+        # For calls/video calls: navigate using keyboard
+        pyautogui.hotkey('ctrl', 'f')
+        time.sleep(1)
 
-    for _ in range(1, target_tab):
-        pyautogui.hotkey('tab')
-        time.sleep(0.3)
+        for _ in range(1, target_tab):
+            pyautogui.hotkey('tab')
+            time.sleep(0.3)
 
-    time.sleep(0.5)
-    pyautogui.hotkey('enter')
+        time.sleep(0.5)
+        pyautogui.hotkey('enter')
 
     # Confirmation
     speak(assistant_message)
@@ -372,23 +378,19 @@ def get_user_context():
 
 
 def build_conversation_memory():
-    """Build rich conversation memory with context"""
+    """Build conversation memory - LIMITED to prevent confusion"""
     if not conversation_context:
-        return "This is the beginning of our conversation."
+        return "This is a new conversation."
     
-    # Keep last 5-7 exchanges for context
-    recent_exchanges = conversation_context[-6:]
+    # Only keep last 2 exchanges to prevent context confusion
+    recent_exchanges = conversation_context[-2:]
     
-    memory = "Recent conversation context:\n"
+    memory = "Previous conversation (only if relevant):\n"
     for i, exchange in enumerate(recent_exchanges, 1):
-        memory += f"{i}. User: {exchange['query'][:100]}\n"
-        memory += f"   You: {exchange['response'][:100]}\n"
+        memory += f"{i}. User asked: {exchange['query'][:80]}\n"
+        memory += f"   You responded: {exchange['response'][:80]}\n"
     
-    # Add metadata
-    if conversation_metadata['topic']:
-        memory += f"\nCurrent topic: {conversation_metadata['topic']}\n"
-    
-    memory += f"Total exchanges in this session: {conversation_metadata['interaction_count']}\n"
+    memory += "\nIMPORTANT: Only reference previous context if the current query is clearly a follow-up question. If it's a new topic, answer it directly without mentioning previous topics."
     
     return memory
 
@@ -423,83 +425,128 @@ def geminai(query):
     
     try:
         # Clean query
+        original_query = query
         query = query.replace(ASSISTANT_NAME, "").replace("search", "").strip()
         
         if not query:
             speak("I didn't catch that, boss. Could you please repeat?")
             return
         
+        # Check if this is a completely new topic (different from last query)
+        # Clear context if topic changed significantly
+        query_lower = query.lower().strip()
+        if conversation_context:
+            last_query = conversation_context[-1].get('query', '').lower()
+            # If new query is completely different (no common words), clear old context
+            if last_query and len(query_lower.split()) > 2:
+                last_words = set(last_query.split())
+                current_words = set(query_lower.split())
+                # If less than 30% word overlap, it's a new topic
+                if len(last_words.intersection(current_words)) / max(len(last_words), len(current_words)) < 0.3:
+                    # Clear old context for new topic
+                    conversation_context = []
+                    conversation_metadata['topic'] = None
+        
         # Configure Gemini
         genai.configure(api_key=LLM_KEY)
-        model = genai.GenerativeModel("gemini-2.5-flash")
         
         # Get context
         user_ctx = get_user_context()
         topic = extract_topic(query)
         if topic:
             conversation_metadata['topic'] = topic
+        
+        # Only use recent context (last 2-3 exchanges max) to prevent confusion
         conversation_memory = build_conversation_memory()
         
         # Get current date/time for real-time context
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         current_date = datetime.now().strftime("%A, %B %d, %Y")
         
-        # Build enhanced system prompt - USING "BOSS"
-        system_prompt = f"""You are {ASSISTANT_NAME}, a highly context-aware AI desktop assistant.
+        # Build system instruction
+        system_instruction = f"""You are {ASSISTANT_NAME}, a highly context-aware AI desktop assistant.
 
 ### CORE IDENTITY:
 - Name: {ASSISTANT_NAME}
 - User Address: boss (Always use this, never use their real name)
 - Location: {user_ctx['location']}
-- User has {user_ctx['contacts_count']} saved contacts
-- User has {user_ctx['commands_count']} custom commands
+- Current Date: {current_date}
+- Current Time: {current_time}
 
-### SYSTEM CAPABILITIES:
-✓ Face authentication & security       ✓ Application launching
-✓ Voice & text command processing      ✓ YouTube search & playback
-✓ Phone calls & messaging (Android)    ✓ Weather info & forecasts
-✓ System controls (volume, brightness) ✓ News headlines & search
-✓ Contact management                    ✓ Web searches
-✓ Custom commands                       ✓ Screenshots & Windows control
-
-### CRITICAL: CONVERSATION CONTEXT AWARENESS
-{conversation_memory}
-
-### YOUR COMMUNICATION STYLE - CRITICAL:
-- Address the user as "boss" - NEVER use their real name, dont overuse the term "boss" , dont use too frequently the term "boss
-- Use "boss" naturally in conversation: "Sure, boss", "Got it, boss", "On it, boss", but not too frequently
+### YOUR COMMUNICATION STYLE:
+- Address the user as "boss" naturally (not too frequently)
 - Be conversational and natural (responses will be spoken aloud)
-- Reference previous topics to show continuity
+- Focus on the CURRENT query - only reference previous topics if explicitly asked
 - Adapt response length: short for quick queries, longer for complex ones
-- Remember technical limitations: you can't directly access system files
 
-### RESPONSE FORMAT CRITICAL:
+### RESPONSE FORMAT:
 - NO markdown formatting (**, *, #, etc.)
 - NO lists with bullets/numbers
-- Use natural flow: "First you could try X, then Y, and finally Z"
+- Use natural flow: "First X, then Y, and finally Z"
 - Keep sentences short for TTS clarity
 - One thought per sentence when possible
 
-### HANDLING MULTI-TURN QUERIES:
-- If user says "more", provide continuation of last topic
-- If user says "again", repeat the key points differently
-- Use "As I mentioned earlier, boss" to reference past statements
-- Clarify when context changes: "So switching topics, boss..."
+### CRITICAL:
+- Answer the CURRENT query directly and completely
+- DO NOT continue or reference previous topics unless the query explicitly asks for it
+- If this is a new topic, ignore previous conversation context
+- Be direct and focused on answering the current question"""
 
-### FOR THIS CURRENT QUERY:
-"{query}"
+        # Create model - try with system instruction first, fallback if not supported
+        try:
+            model = genai.GenerativeModel(
+                "gemini-2.5-flash",
+                system_instruction=system_instruction
+            )
+        except Exception as e:
+            logger.warning(f"System instruction not supported, using fallback: {e}")
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            # Include system instruction in prompt instead
+            system_instruction = f"""You are {ASSISTANT_NAME}. Address user as "boss" naturally. Be conversational. NO markdown. Current date: {current_date}."""
+        
+        # Build the actual prompt with context
+        if conversation_memory and "new conversation" not in conversation_memory.lower():
+            prompt = f"""{system_instruction}
 
-Provide a response that:
-1. References any relevant context from previous exchanges
-2. Is concise and conversational
-3. Will sound natural when read aloud
-4. Maintains continuity with established topic
-5. Addresses user as "boss" - make it feel natural
-6. Uses "boss" at least once in most responses"""
+{conversation_memory}
 
-        # Generate response
-        response = model.generate_content(system_prompt)
-        ai_reply = response.text.strip()
+User's question: {query}
+
+Answer this question directly. Do not reference previous topics unless the question explicitly asks about them."""
+        else:
+            prompt = f"""{system_instruction}
+
+User's question: {query}
+
+Provide a direct, complete answer."""
+
+        # Generate response with timeout
+        logger.info(f"Calling Gemini API for query: {query[:50]}...")
+        try:
+            response = model.generate_content(prompt)
+            ai_reply = response.text.strip()
+            logger.info(f"Gemini response received: {ai_reply[:100]}...")
+        except Exception as e:
+            error_str = str(e)
+            logger.error(f"Gemini API call failed: {e}")
+            
+            # Handle specific error types
+            if "429" in error_str or "quota" in error_str.lower() or "exceeded" in error_str.lower():
+                # Quota exceeded - free tier limit
+                speak("I've reached my daily request limit, boss. The free tier allows 20 requests per day. Please try again tomorrow or upgrade your API plan.")
+                print(f"{ASSISTANT_NAME}: Daily quota exceeded. Free tier limit: 20 requests/day")
+            elif "403" in error_str or "forbidden" in error_str.lower():
+                # API key issue
+                speak("There's an issue with my API access, boss. Please check the API key configuration.")
+                print(f"{ASSISTANT_NAME}: API access forbidden. Check API key.")
+            elif "401" in error_str or "unauthorized" in error_str.lower():
+                # Invalid API key
+                speak("My API key seems invalid, boss. Please check the configuration.")
+                print(f"{ASSISTANT_NAME}: Unauthorized. Invalid API key.")
+            else:
+                # Generic error
+                speak("I'm having trouble processing that right now, boss. Please try again in a moment.")
+            return
         
         # Clean for TTS
         filter_text = markdown_to_text(ai_reply)
@@ -515,14 +562,15 @@ Provide a response that:
             'query': query,
             'response': filter_text,
             'topic': topic,
-            'timestamp': __import__('datetime').datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat()
         })
         
-        # Keep only last 10 exchanges
-        if len(conversation_context) > 10:
-            conversation_context.pop(0)
+        # Keep only last 3 exchanges to prevent context confusion
+        if len(conversation_context) > 3:
+            conversation_context = conversation_context[-3:]
         
         conversation_metadata['interaction_count'] += 1
+        conversation_metadata['last_query_time'] = datetime.now()
         
         # Handle follow-up requests
         if "?" in filter_text and any(word in filter_text.lower() 
@@ -540,46 +588,153 @@ Provide a response that:
 
 def makeCall(name, mobileNo):
     mobileNo = mobileNo.replace(" ", "")
+    
+    # Check ADB device authorization first
+    is_connected, status = check_adb_device()
+    
+    if not is_connected:
+        if status == "unauthorized":
+            error_msg = f"Your Android device is not authorized, boss. Please check your phone and accept the USB debugging authorization dialog, then try again."
+            speak(error_msg)
+            print(f"[ADB Error]: Device unauthorized. Please accept authorization on your phone.")
+            return
+        elif status == "no_device":
+            error_msg = f"No Android device found, boss. Please connect your device via USB or Wi-Fi and ensure ADB is enabled."
+            speak(error_msg)
+            print(f"[ADB Error]: No device connected.")
+            return
+        else:
+            error_msg = f"Could not connect to Android device, boss. Please check your connection and try again."
+            speak(error_msg)
+            print(f"[ADB Error]: Connection issue - {status}")
+            return
+    
     speak("Calling "+name)
-    command = 'adb shell am start -a android.intent.action.CALL -d tel:'+mobileNo
-    os.system(command)
+    
+    try:
+        result = subprocess.run(
+            ["adb", "shell", "am", "start", "-a", "android.intent.action.CALL", "-d", f"tel:{mobileNo}"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode != 0 or "unauthorized" in result.stderr.lower():
+            raise Exception("ADB command failed or device unauthorized")
+            
+    except subprocess.TimeoutExpired:
+        speak("The call operation timed out, boss. Please check your device connection.")
+        print("[ADB Error]: Call command timeout")
+    except Exception as e:
+        error_str = str(e).lower()
+        if "unauthorized" in error_str:
+            speak("Your device authorization was revoked, boss. Please accept the authorization dialog on your phone and try again.")
+        else:
+            speak(f"Failed to make call, boss. Please check your device connection.")
+        print(f"[ADB Error]: {e}")
 
 
 import subprocess
 import time
 
+def check_adb_device():
+    """Check if ADB device is connected and authorized."""
+    try:
+        result = subprocess.run(
+            ["adb", "devices"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        output = result.stdout
+        
+        # Check for unauthorized devices
+        if "unauthorized" in output.lower():
+            return False, "unauthorized"
+        
+        # Check for connected devices (device status)
+        if "device" in output and "unauthorized" not in output:
+            return True, "authorized"
+        
+        # No devices found
+        if "no devices" in output.lower() or "List of devices" in output and "device" not in output:
+            return False, "no_device"
+        
+        return False, "unknown"
+    except subprocess.TimeoutExpired:
+        return False, "timeout"
+    except Exception as e:
+        print(f"[ADB Check Error]: {e}")
+        return False, "error"
+
 def sendMessage(message, mobileNo, name):
     """Send SMS via Google Messages using ADB automation."""
+    # Check ADB device authorization first
+    is_connected, status = check_adb_device()
+    
+    if not is_connected:
+        if status == "unauthorized":
+            error_msg = f"Your Android device is not authorized, boss. Please check your phone and accept the USB debugging authorization dialog, then try again."
+            speak(error_msg)
+            print(f"[ADB Error]: Device unauthorized. Please accept authorization on your phone.")
+            return
+        elif status == "no_device":
+            error_msg = f"No Android device found, boss. Please connect your device via USB or Wi-Fi and ensure ADB is enabled."
+            speak(error_msg)
+            print(f"[ADB Error]: No device connected.")
+            return
+        else:
+            error_msg = f"Could not connect to Android device, boss. Please check your connection and try again."
+            speak(error_msg)
+            print(f"[ADB Error]: Connection issue - {status}")
+            return
+    
     speak(f"Sending message to {name} via Google Messages")
 
-    # --- Google Messages UI automation ---
-    subprocess.run([
-        "adb", "shell", "am", "start",
-        "-n", "com.google.android.apps.messaging/.ui.ConversationListActivity"
-    ])
-    time.sleep(2)
+    try:
+        # --- Google Messages UI automation ---
+        result = subprocess.run(
+            ["adb", "shell", "am", "start",
+             "-n", "com.google.android.apps.messaging/.ui.ConversationListActivity"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode != 0 or "unauthorized" in result.stderr.lower():
+            raise Exception("ADB command failed or device unauthorized")
+        
+        time.sleep(2)
 
-    # Tap “Start chat” button
-    subprocess.run(["adb", "shell", "input", "tap", "800", "2200"])
-    time.sleep(1)
+        # Tap "Start chat" button
+        subprocess.run(["adb", "shell", "input", "tap", "800", "2200"], timeout=5)
+        time.sleep(1)
 
-    # Type contact number
-    subprocess.run(["adb", "shell", f"input text {mobileNo}"])
-    # subprocess.run(["adb", "shell", "input keyevent 66"])  # Enter
-    subprocess.run(["adb", "shell", "input tap 980 2250"])  # Enter
-    time.sleep(2)
+        # Type contact number
+        subprocess.run(["adb", "shell", f"input text {mobileNo}"], timeout=5)
+        subprocess.run(["adb", "shell", "input tap 980 2250"], timeout=5)  # Enter
+        time.sleep(2)
 
-    # Type the message (spaces must be escaped for ADB input)
-    safe_message = message.replace(" ", "%s")
-    subprocess.run(["adb", "shell", f"input text {safe_message}"])
-    time.sleep(1)
+        # Type the message (spaces must be escaped for ADB input)
+        safe_message = message.replace(" ", "%s")
+        subprocess.run(["adb", "shell", f"input text {safe_message}"], timeout=5)
+        time.sleep(1)
 
-    # Send the message
-    # subprocess.run(["adb", "shell", "input keyevent 66"])  # Enter
-    time.sleep(1)
-    subprocess.run(["adb", "shell", "input tap 950 1500"])  # optional: tap SEND icon
+        # Send the message
+        time.sleep(1)
+        subprocess.run(["adb", "shell", "input tap 950 1500"], timeout=5)  # tap SEND icon
 
-    speak(f"Message sent successfully to {name}")
+        speak(f"Message sent successfully to {name}")
+    except subprocess.TimeoutExpired:
+        speak("The operation timed out, boss. Please check your device connection.")
+        print("[ADB Error]: Command timeout")
+    except Exception as e:
+        error_str = str(e).lower()
+        if "unauthorized" in error_str:
+            speak("Your device authorization was revoked, boss. Please accept the authorization dialog on your phone and try again.")
+        else:
+            speak(f"Failed to send message, boss. Please check your device connection. Error: {str(e)[:50]}")
+        print(f"[ADB Error]: {e}")
 
 
 
