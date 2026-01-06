@@ -401,7 +401,14 @@ def handle_api_request(intent, entities, query):
     """
     try:
         if intent == 'weather':
-            location = entities.get('location', 'Bengaluru')
+            # Get default location from config if available
+            try:
+                from engine.config import DEFAULT_LOCATION
+                default_location = DEFAULT_LOCATION.split(',')[0].strip() if DEFAULT_LOCATION else 'Bengaluru'
+            except:
+                default_location = 'Bengaluru'
+            location = entities.get('location', default_location)
+            logger.info(f"Weather request for location: {location}")
             return get_weather(location)
         
         elif intent == 'news':

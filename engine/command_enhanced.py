@@ -190,7 +190,65 @@ def expose_eel_functions():
                     safe_eel_call('ShowHood')
                     return
             
-            # ========== TRY SYSTEM COMMANDS FIRST (HIGHEST PRIORITY) ==========
+            # ========== CHECK WEATHER/NEWS FIRST (BEFORE SYSTEM COMMANDS) ==========
+            # Weather and News should use APIs, not Gemini - check immediately
+            weather_keywords = ['weather', 'temperature', 'forecast', 'climate', 'rain', 'snow', 'humid', 'wind', 'weather in', 'weather at', 'weather for']
+            news_keywords = ['news', 'headlines', 'latest news', 'current events', 'breaking news', 'today\'s news', 'sports headlines', 'tech news', 'business news']
+            
+            # Check for weather queries FIRST (before system commands or NLP)
+            if any(keyword in query_lower for keyword in weather_keywords):
+                logger.info(f"[PRIORITY] Detected weather query: {query}")
+                try:
+                    from engine.api_handler import handle_api_request
+                    # Extract location from query if present
+                    entities = {}
+                    import re
+                    location_match = re.search(r'(?:weather|temperature|forecast)\s+(?:in|at|for)\s+(\w+)', query_lower)
+                    if location_match:
+                        entities['location'] = location_match.group(1).title()
+                    api_response = handle_api_request('weather', entities, query)
+                    if api_response and api_response.strip():
+                        error_indicators = ["error", "couldn't", "not configured", "not found", "taking too long"]
+                        if not any(indicator in api_response.lower() for indicator in error_indicators):
+                            speak(api_response)
+                        else:
+                            speak(api_response)
+                    else:
+                        speak("I couldn't fetch weather information, boss. Please check your internet connection and try again.")
+                except Exception as e:
+                    logger.error(f"Weather request error: {e}", exc_info=True)
+                    speak("I encountered an error while getting weather information, boss. Please try again.")
+                safe_eel_call('ShowHood')
+                return
+            
+            # Check for news queries FIRST (before system commands or NLP)
+            if any(keyword in query_lower for keyword in news_keywords):
+                logger.info(f"[PRIORITY] Detected news query: {query}")
+                try:
+                    from engine.api_handler import handle_api_request
+                    # Extract category from query if present
+                    entities = {}
+                    categories = ['sports', 'technology', 'business', 'entertainment', 'health', 'science']
+                    for cat in categories:
+                        if cat in query_lower:
+                            entities['category'] = cat
+                            break
+                    api_response = handle_api_request('news', entities, query)
+                    if api_response and api_response.strip():
+                        error_indicators = ["error", "couldn't", "not configured", "not found", "timed out"]
+                        if not any(indicator in api_response.lower() for indicator in error_indicators):
+                            speak(api_response)
+                        else:
+                            speak(api_response)
+                    else:
+                        speak("I couldn't fetch news information, boss. Please check your internet connection and try again.")
+                except Exception as e:
+                    logger.error(f"News request error: {e}", exc_info=True)
+                    speak("I encountered an error while getting news information, boss. Please try again.")
+                safe_eel_call('ShowHood')
+                return
+            
+            # ========== TRY SYSTEM COMMANDS (HIGHEST PRIORITY) ==========
             # System commands should work immediately without NLP
             # Use query_lower for system command matching
             if execute_system_command(query_lower):
@@ -243,7 +301,56 @@ def expose_eel_functions():
                 return
             
             # === EXTERNAL APIs (WEATHER, NEWS, TIME, DATE, etc.) ===
-            if intent in ['weather', 'news', 'time_query', 'date_query', 'system_info']:
+            # Check both intent and explicit keywords for weather/news (secondary check after NLP)
+            weather_keywords_secondary = ['weather', 'temperature', 'forecast', 'climate', 'rain', 'snow', 'humid', 'wind']
+            news_keywords_secondary = ['news', 'headlines', 'latest news', 'current events', 'breaking news', 'today\'s news']
+            
+            # Explicit weather check
+            if intent == 'weather' or any(keyword in query_lower for keyword in weather_keywords):
+                logger.info(f"Processing weather request: {query}, Intent: {intent}, Entities: {entities}")
+                try:
+                    api_response = handle_api_request('weather', entities, query)
+                    if api_response and api_response.strip():
+                        # Check if response indicates an error
+                        error_indicators = ["error", "couldn't", "not configured", "not found", "taking too long"]
+                        if not any(indicator in api_response.lower() for indicator in error_indicators):
+                            speak(api_response)
+                        else:
+                            logger.warning(f"Weather API returned error: {api_response}")
+                            speak(api_response)  # Speak the error message so user knows what went wrong
+                    else:
+                        logger.warning(f"Weather API returned None or empty response")
+                        speak("I couldn't fetch weather information, boss. Please check your internet connection and try again.")
+                except Exception as e:
+                    logger.error(f"Weather request error: {e}", exc_info=True)
+                    speak("I encountered an error while getting weather information, boss. Please try again.")
+                safe_eel_call('ShowHood')
+                return
+            
+            # Explicit news check
+            if intent == 'news' or any(keyword in query_lower for keyword in news_keywords):
+                logger.info(f"Processing news request: {query}, Intent: {intent}, Entities: {entities}")
+                try:
+                    api_response = handle_api_request('news', entities, query)
+                    if api_response and api_response.strip():
+                        # Check if response indicates an error
+                        error_indicators = ["error", "couldn't", "not configured", "not found", "timed out"]
+                        if not any(indicator in api_response.lower() for indicator in error_indicators):
+                            speak(api_response)
+                        else:
+                            logger.warning(f"News API returned error: {api_response}")
+                            speak(api_response)  # Speak the error message so user knows what went wrong
+                    else:
+                        logger.warning(f"News API returned None or empty response")
+                        speak("I couldn't fetch news information, boss. Please check your internet connection and try again.")
+                except Exception as e:
+                    logger.error(f"News request error: {e}", exc_info=True)
+                    speak("I encountered an error while getting news information, boss. Please try again.")
+                safe_eel_call('ShowHood')
+                return
+            
+            # Other API intents (time, date, system_info)
+            if intent in ['time_query', 'date_query', 'system_info']:
                 api_response = handle_api_request(intent, entities, query)
                 if api_response:
                     speak(api_response)
@@ -268,7 +375,51 @@ def expose_eel_functions():
                 return
             
             # === GENERAL QUERIES ===
+            # BUT FIRST: Check if it's actually a weather/news query that was misclassified
+            weather_keywords_fallback = ['weather', 'temperature', 'forecast', 'climate', 'rain', 'snow', 'humid', 'wind', 'weather in', 'weather at']
+            news_keywords_fallback = ['news', 'headlines', 'latest news', 'current events', 'breaking news', 'today\'s news', 'tell me news', 'what\'s the news']
+            
+            # Double-check for weather/news even if intent is general_query
             if intent == 'general_query':
+                # Check if it's actually a weather query
+                if any(keyword in query_lower for keyword in weather_keywords_fallback):
+                    logger.info(f"Detected weather query in general_query: {query}")
+                    try:
+                        api_response = handle_api_request('weather', entities, query)
+                        if api_response and api_response.strip():
+                            error_indicators = ["error", "couldn't", "not configured", "not found", "taking too long"]
+                            if not any(indicator in api_response.lower() for indicator in error_indicators):
+                                speak(api_response)
+                            else:
+                                speak(api_response)
+                        else:
+                            speak("I couldn't fetch weather information, boss. Please check your internet connection and try again.")
+                    except Exception as e:
+                        logger.error(f"Weather request error: {e}", exc_info=True)
+                        speak("I encountered an error while getting weather information, boss. Please try again.")
+                    safe_eel_call('ShowHood')
+                    return
+                
+                # Check if it's actually a news query
+                if any(keyword in query_lower for keyword in news_keywords_fallback):
+                    logger.info(f"Detected news query in general_query: {query}")
+                    try:
+                        api_response = handle_api_request('news', entities, query)
+                        if api_response and api_response.strip():
+                            error_indicators = ["error", "couldn't", "not configured", "not found", "timed out"]
+                            if not any(indicator in api_response.lower() for indicator in error_indicators):
+                                speak(api_response)
+                            else:
+                                speak(api_response)
+                        else:
+                            speak("I couldn't fetch news information, boss. Please check your internet connection and try again.")
+                    except Exception as e:
+                        logger.error(f"News request error: {e}", exc_info=True)
+                        speak("I encountered an error while getting news information, boss. Please try again.")
+                    safe_eel_call('ShowHood')
+                    return
+                
+                # If it's truly a general query (not weather/news), try API first, then Gemini
                 api_response = handle_api_request(intent, entities, query)
                 if api_response:
                     speak(api_response)
@@ -279,6 +430,39 @@ def expose_eel_functions():
                 return
             
             # === FALLBACK: Gemini AI ===
+            # Final check: Even in fallback, check for weather/news keywords
+            weather_keywords_final = ['weather', 'temperature', 'forecast', 'climate']
+            news_keywords_final = ['news', 'headlines', 'latest news']
+            
+            if any(keyword in query_lower for keyword in weather_keywords_final):
+                logger.info(f"Fallback: Detected weather query: {query}")
+                try:
+                    api_response = handle_api_request('weather', entities, query)
+                    if api_response and api_response.strip():
+                        speak(api_response)
+                    else:
+                        speak("I couldn't fetch weather information, boss. Please try again.")
+                except Exception as e:
+                    logger.error(f"Weather fallback error: {e}")
+                    speak("I encountered an error while getting weather information, boss.")
+                safe_eel_call('ShowHood')
+                return
+            
+            if any(keyword in query_lower for keyword in news_keywords_final):
+                logger.info(f"Fallback: Detected news query: {query}")
+                try:
+                    api_response = handle_api_request('news', entities, query)
+                    if api_response and api_response.strip():
+                        speak(api_response)
+                    else:
+                        speak("I couldn't fetch news information, boss. Please try again.")
+                except Exception as e:
+                    logger.error(f"News fallback error: {e}")
+                    speak("I encountered an error while getting news information, boss.")
+                safe_eel_call('ShowHood')
+                return
+            
+            # Only use Gemini if it's truly not a weather/news query
             from engine.features import geminai
             geminai(query)
             safe_eel_call('ShowHood')

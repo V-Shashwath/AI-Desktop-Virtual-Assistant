@@ -383,7 +383,7 @@ def build_conversation_memory():
         return "This is a new conversation."
     
     # Only keep last 2 exchanges to prevent context confusion
-    recent_exchanges = conversation_context[-2:]
+    recent_exchanges = conversation_context[-3:]
     
     memory = "Previous conversation (only if relevant):\n"
     for i, exchange in enumerate(recent_exchanges, 1):
