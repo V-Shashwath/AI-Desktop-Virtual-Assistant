@@ -100,7 +100,7 @@ def AuthenticateFace():
 
     face_cascade = cv2.CascadeClassifier('engine\\auth\\haarcascade_frontalface_default.xml')
 
-    names = ['', 'Shashwath', 'User2']  # Extend as needed
+    names = ['Shash', 'Shashwath']  # Extend as needed
 
     cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cam.set(3, 640)
