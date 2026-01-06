@@ -40,7 +40,7 @@ def listen_hotword():
     This works independently of the background button
     Responds without opening window when minimized
     """
-    print("🎤 Hotword listener starting...")
+    print(" Hotword listener starting...")
     import speech_recognition as sr
     
     recognizer = sr.Recognizer()
@@ -160,7 +160,7 @@ def check_requirements():
             missing.append(pkg_name)
     
     if missing:
-        print("\n⚠️ Missing required packages:")
+        print("\n Missing required packages:")
         print(f"   {', '.join(missing)}")
         print("\nInstall them with:")
         print(f"   pip install {' '.join(missing)}\n")
@@ -195,41 +195,41 @@ def setup_android_device():
 if __name__ == '__main__':
     # Welcome message
     print("\n" + "="*60)
-    print("🤖 AI DESKTOP VIRTUAL ASSISTANT (ADVA) v2.0")
+    print(" AI DESKTOP VIRTUAL ASSISTANT (ADVA) v2.0")
     print("="*60)
-    print("📋 Features:")
-    print("   ✅ Face Authentication")
-    print("   ✅ Always-on Hotword Detection (Jarvis, Alexa, Computer)")
-    print("   ✅ Voice & Text Commands")
-    print("   ✅ Natural Language Processing")
-    print("   ✅ Optional Background Listening Mode (UI Button)")
-    print("   ✅ System Controls (Volume, Brightness, etc.)")
-    print("   ✅ External APIs (Weather, News, etc.)")
-    print("   ✅ Phone Calls & Messages (Android)")
-    print("   ✅ YouTube Integration")
-    print("   ✅ Gemini AI Integration")
+    print(" Features:")
+    print("    Face Authentication")
+    print("    Always-on Hotword Detection (Jarvis, Alexa, Computer)")
+    print("    Voice & Text Commands")
+    print("    Natural Language Processing")
+    print("    Optional Background Listening Mode (UI Button)")
+    print("    System Controls (Volume, Brightness, etc.)")
+    print("    External APIs (Weather, News, etc.)")
+    print("    Phone Calls & Messages (Android)")
+    print("    YouTube Integration")
+    print("    Gemini AI Integration")
     print("="*60)
     print()
     
     # Check requirements
-    print("🔍 Checking requirements...")
+    print(" Checking requirements...")
     if not check_requirements():
         sys.exit(1)
-    print("✅ All requirements satisfied\n")
+    print(" All requirements satisfied\n")
     
     # Initialize NLTK
-    print("🧠 Initializing NLP engine...")
+    print(" Initializing NLP engine...")
     initialize_nltk()
-    print("✅ NLP engine ready\n")
+    print(" NLP engine ready\n")
     
     # Setup Android (optional)
-    print("📱 Setting up Android device (optional)...")
+    print(" Setting up Android device (optional)...")
     setup_android_device()
     print()
     
     # Instructions
     print("="*60)
-    print("📖 HOW TO USE:")
+    print(" HOW TO USE:")
     print("="*60)
     print("1. Face Authentication will start first")
     print("2. ALWAYS-ON HOTWORD (Works automatically):")
@@ -247,7 +247,7 @@ if __name__ == '__main__':
     print("   • Auto-sleeps after 15 seconds of inactivity")
     print("   • Say 'Stop' or 'Sleep Mode' to deactivate")
     print()
-    print("💻 SYSTEM COMMANDS:")
+    print("5. SYSTEM COMMANDS:")
     print("   • Volume up/down, Brightness up/down")
     print("   • Battery status, Close window, Switch tab")
     print("   • Screenshot, Lock system, and more!")
@@ -259,13 +259,13 @@ if __name__ == '__main__':
         p1 = multiprocessing.Process(target=start_assistant, name="MainAssistant")
         p2 = multiprocessing.Process(target=listen_hotword, name="HotwordListener", daemon=True)
         
-        print("🚀 Starting main assistant...")
+        print("Starting main assistant...")
         p1.start()
         
-        print("🎤 Starting always-on hotword listener...")
+        print("Starting always-on hotword listener...")
         p2.start()
         
-        print("✅ All systems online!\n")
+        print("All systems online!\n")
         
         # Wait for main process
         p1.join()
@@ -275,10 +275,10 @@ if __name__ == '__main__':
             p2.terminate()
             p2.join()
         
-        print("\n\n👋 Thank you for using ADVA!")
+        print("\n\nThank you for using ADVA!")
         
     except KeyboardInterrupt:
-        print("\n\n👋 Thank you for using ADVA!")
+        print("\n\nThank you for using ADVA!")
         if 'p1' in locals() and p1.is_alive():
             p1.terminate()
         if 'p2' in locals() and p2.is_alive():

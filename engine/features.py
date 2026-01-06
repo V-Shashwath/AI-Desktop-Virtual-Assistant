@@ -431,7 +431,7 @@ def geminai(query):
         
         # Configure Gemini
         genai.configure(api_key=LLM_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
         # Get context
         user_ctx = get_user_context()

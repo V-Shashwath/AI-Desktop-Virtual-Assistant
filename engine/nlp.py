@@ -174,7 +174,7 @@ def extract_intent(query):
                 r'\bmaximize\s+(window|this)',
                 r'\bmaximize\b'
             ],
-            'keywords': ['maximize', 'window'],
+            'keywords': ['maximize','maximise' 'window'],
             'priority': 14
         },
         'lock_system': {
