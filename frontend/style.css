@@ -575,3 +575,110 @@ svg {
         box-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000;
     }
 }
+
+/* ===== AUTHENTICATION CHOICE SCREEN ===== */
+
+.auth-choice-btn {
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid #00AAFF;
+    border-radius: 20px;
+    padding: 40px 60px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 170, 255, 0.3),
+                inset 0 0 20px rgba(0, 170, 255, 0.1);
+    min-width: 250px;
+}
+
+.auth-choice-btn:hover {
+    background: rgba(0, 170, 255, 0.2);
+    box-shadow: 0 0 30px rgba(0, 170, 255, 0.6),
+                inset 0 0 30px rgba(0, 170, 255, 0.2);
+    transform: translateY(-5px);
+}
+
+.auth-choice-btn:active {
+    transform: translateY(-2px);
+    box-shadow: 0 0 40px rgba(0, 170, 255, 0.8),
+                inset 0 0 40px rgba(0, 170, 255, 0.3);
+}
+
+.auth-choice-btn i {
+    display: block;
+    color: #00AAFF;
+    margin-bottom: 15px;
+}
+
+.auth-choice-btn h3 {
+    margin: 0;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+/* ===== PASSCODE INPUT SCREEN ===== */
+
+.passcode-container {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 170, 255, 0.3);
+    border-radius: 15px;
+    padding: 40px;
+    box-shadow: 0 0 30px rgba(0, 170, 255, 0.2),
+                inset 0 0 20px rgba(0, 170, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.passcode-inputs {
+    margin: 30px 0;
+}
+
+.passcode-digit {
+    width: 60px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(0, 170, 255, 0.5);
+    border-radius: 10px;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: center;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.passcode-digit:focus {
+    background: rgba(0, 170, 255, 0.2);
+    border-color: #00AAFF;
+    box-shadow: 0 0 20px rgba(0, 170, 255, 0.5),
+                inset 0 0 10px rgba(0, 170, 255, 0.2);
+    transform: scale(1.05);
+}
+
+.passcode-digit.filled {
+    border-color: #00ff00;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+}
+
+#PasscodeError {
+    font-size: 1rem;
+    padding: 10px;
+    background: rgba(255, 0, 0, 0.2);
+    border: 1px solid rgba(255, 0, 0, 0.5);
+    border-radius: 8px;
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+#VerifyPasscodeBtn {
+    width: 200px;
+    padding: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+}

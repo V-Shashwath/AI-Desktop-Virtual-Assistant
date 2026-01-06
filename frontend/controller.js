@@ -87,5 +87,69 @@ $(document).ready(function () {
             $("#oval").attr("hidden", false);
         }, 1000)
     }
+
+    // Show passcode authentication screen
+    eel.expose(showPasscodeAuth)
+    function showPasscodeAuth() {
+        $("#AuthChoice").attr("hidden", true);
+        $("#PasscodeAuth").attr("hidden", false);
+        // Focus first input
+        $(".passcode-digit").first().focus();
+    }
+
+    // Show face authentication screen
+    eel.expose(showFaceAuth)
+    function showFaceAuth() {
+        $("#AuthChoice").attr("hidden", true);
+        $("#Start").attr("hidden", false);
+        $("#Loader").attr("hidden", false);
+    }
+
+    // Hide passcode screen
+    eel.expose(hidePasscodeAuth)
+    function hidePasscodeAuth() {
+        $("#PasscodeAuth").attr("hidden", true);
+    }
+
+    // Show passcode success animation
+    eel.expose(showPasscodeSuccess)
+    function showPasscodeSuccess() {
+        $("#Start").attr("hidden", false);
+        $("#Loader").attr("hidden", true);
+        $("#FaceAuth").attr("hidden", true);
+        $("#FaceAuthSuccess").attr("hidden", false);
+    }
+
+    // Hide passcode success and proceed
+    eel.expose(hidePasscodeSuccess)
+    function hidePasscodeSuccess() {
+        $("#FaceAuthSuccess").attr("hidden", true);
+        $("#HelloGreet").attr("hidden", false);
+    }
+
+    // Show passcode error
+    eel.expose(showPasscodeError)
+    function showPasscodeError() {
+        $("#PasscodeError").show();
+        // Clear all inputs
+        $(".passcode-digit").val("").removeClass("filled");
+        $(".passcode-digit").first().focus();
+        // Hide error after 3 seconds
+        setTimeout(function() {
+            $("#PasscodeError").hide();
+        }, 3000);
+    }
+
+    // Delayed authentication success (called after face or passcode success animation)
+    eel.expose(delayedAuthSuccess)
+    function delayedAuthSuccess() {
+        setTimeout(function() {
+            // Hide success animation and show HelloGreet
+            $("#FaceAuthSuccess").attr("hidden", true);
+            $("#HelloGreet").attr("hidden", false);
+            // Then complete authentication
+            eel.completeAuthentication()();
+        }, 1500);
+    }
     
 });

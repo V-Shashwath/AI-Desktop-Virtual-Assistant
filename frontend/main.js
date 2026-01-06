@@ -1,5 +1,67 @@
 $(document).ready(function () {
 
+    // Authentication Choice Button Handlers
+    $("#FaceAuthBtn").click(function () {
+        eel.chooseFaceAuth()();
+    });
+
+    $("#PasscodeAuthBtn").click(function () {
+        eel.choosePasscodeAuth()();
+    });
+
+    // Passcode Input Handling
+    $(".passcode-digit").on("input", function() {
+        const value = $(this).val();
+        // Only allow numbers
+        if (!/^\d$/.test(value)) {
+            $(this).val("");
+            return;
+        }
+        
+        $(this).addClass("filled");
+        
+        // Auto-focus next input
+        const $inputs = $(".passcode-digit");
+        const currentIndex = $inputs.index(this);
+        if (currentIndex < $inputs.length - 1 && value) {
+            $inputs.eq(currentIndex + 1).focus();
+        }
+    });
+
+    // Handle backspace to go to previous input
+    $(".passcode-digit").on("keydown", function(e) {
+        if (e.key === "Backspace" && !$(this).val()) {
+            const $inputs = $(".passcode-digit");
+            const currentIndex = $inputs.index(this);
+            if (currentIndex > 0) {
+                $inputs.eq(currentIndex - 1).focus().val("").removeClass("filled");
+            }
+        }
+    });
+
+    // Verify Passcode Button
+    $("#VerifyPasscodeBtn").click(function () {
+        const passcode = $(".passcode-digit").map(function() {
+            return $(this).val();
+        }).get().join("");
+        
+        if (passcode.length === 6) {
+            eel.verifyPasscode(passcode)();
+        } else {
+            $("#PasscodeError").text("Please enter all 6 digits").show();
+            setTimeout(function() {
+                $("#PasscodeError").hide();
+            }, 3000);
+        }
+    });
+
+    // Allow Enter key to verify passcode
+    $(".passcode-digit").on("keypress", function(e) {
+        if (e.which === 13) {
+            $("#VerifyPasscodeBtn").click();
+        }
+    });
+
     eel.init()()
 
     $('.text').textillate({

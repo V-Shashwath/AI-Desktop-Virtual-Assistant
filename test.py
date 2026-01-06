@@ -119,17 +119,21 @@
 
 
 
-# Run this to test:
-from engine.command_enhanced import speak
+# # Run this to test:
+# from engine.command_enhanced import speak
 
-# Test 1: English with Indian accent
-speak("Hello boss, how can I help you today?")
-# You should hear: Natural Indian English voice! 🇮🇳
+# # Test 1: English with Indian accent
+# speak("Hello boss, how can I help you today?")
+# # You should hear: Natural Indian English voice! 🇮🇳
 
-# Test 2: Any English text
-speak("What would you like me to do?")
-# You should hear: Indian English accent!
+# # Test 2: Any English text
+# speak("What would you like me to do?")
+# # You should hear: Indian English accent!
 
-# Test 3: Boss address
-speak("Got it boss, I am on it")
-# You should hear: Indian English with "boss" addressed naturally
+# # Test 3: Boss address
+# speak("Got it boss, I am on it")
+# # You should hear: Indian English with "boss" addressed naturally
+
+
+from engine.auth.recoganize import AuthenticateFace
+AuthenticateFace()

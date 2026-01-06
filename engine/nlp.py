@@ -119,7 +119,7 @@ def extract_intent(query):
                 r'\bbrighter\b',
                 r'\bincrease\s+screen\b'
             ],
-            'keywords': ['brightness', 'up', 'increase', 'brighter', 'screen'],
+            'keywords': ['brightness', 'up', 'increase','increase the brightness', 'brighter', 'screen'],
             'priority': 15,
             'sub_type': 'brightness_up'
         },
@@ -130,7 +130,7 @@ def extract_intent(query):
                 r'\bdimmer\b',
                 r'\b(dim|decrease)\s+screen\b'
             ],
-            'keywords': ['brightness', 'down', 'decrease', 'dimmer', 'dim'],
+            'keywords': ['brightness', 'down', 'decrease', 'decrease the brightness', 'dimmer', 'dim'],
             'priority': 15,
             'sub_type': 'brightness_down'
         },
