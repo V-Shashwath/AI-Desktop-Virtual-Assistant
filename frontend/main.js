@@ -77,14 +77,13 @@ $(document).ready(function () {
         }
     });
 
-    //siri-config
-    var siriWave = new SiriWave({
+    // Custom Siri Wave - Ultra-fast, smooth animation
+    var siriWave = new CustomSiriWave({
         container: document.getElementById("siri-container"),
         width: 800,
         height: 200,
-        style:"ios9",
         amplitude: 1,
-        speed: "0.30",
+        speed: 0.4,  // Fast, smooth animation speed
         autostart: true
     });
 
